@@ -102,13 +102,17 @@
     .gender-m { background-color: #1e88e5; } /* Blue for Male */
     .gender-f { background-color: #e91e63; } /* Pink for Female */
 
-    /* EMOJI / NATION FLAG STYLING */
-    .flag-emoji {
-      font-size: 16px;
-      line-height: 1;
-      display: inline-block;
+    /* FLAG IMAGE STYLING */
+    .flag-img, .runner-pill img {
+      height: 16px;
+      width: auto;
+      border-radius: 2px;
+      vertical-align: middle;
+      object-fit: contain;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
 
+    /* FALLBACK TEXT NATION BADGE */
     .nation-flag {
       background-color: rgba(0, 0, 0, 0.3);
       font-size: 11px;
@@ -147,46 +151,16 @@
 
   <script>
     const API_URL = "https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9";
-
-    // Convert 2-letter ISO codes (e.g., PR, US, MX, MY) or 3-letter codes to Flag Emojis
-    function getFlagEmoji(countryCode) {
-      if (!countryCode) return '';
-      
-      // Clean string if it contains HTML or path string
-      let cleaned = countryCode.replace(/<[^>]*>?/gm, '').replace(/.*\/|\.[^.]*$/g, '').toUpperCase();
-
-      // Common 3-letter to 2-letter ISO overrides
-      const codeMap = {
-        'PUR': 'PR',
-        'USA': 'US',
-        'MEX': 'MX',
-        'MAS': 'MY',
-        'ESP': 'ES',
-        'COL': 'CO'
-      };
-
-      if (codeMap[cleaned]) {
-        cleaned = codeMap[cleaned];
-      }
-
-      // Generate emoji flag if 2 characters
-      if (cleaned.length === 2) {
-        const codePoints = cleaned
-          .toUpperCase()
-          .split('')
-          .map(char => 127397 + char.charCodeAt());
-        return String.fromCodePoint(...codePoints);
-      }
-      
-      return cleaned; // Fallback to raw text code
-    }
+    const BASE_RR_URL = "https://my.raceresult.com";
 
     async function updateTicker() {
       try {
         const response = await fetch(API_URL);
         const json = await response.json();
         
+        // Extract array from RACE RESULT response
         const rows = json.list ? json.list.data : json;
+        
         const track = document.getElementById("ticker-track");
         track.innerHTML = ""; 
 
@@ -194,10 +168,12 @@
           const pill = document.createElement("span");
           pill.className = "runner-pill";
 
+          // Mapping array indices from RACE RESULT Simple API JSON:
+          // [0] Position, [1] Bib, [2] Name, [3] City, [4] Time, [5] Flag HTML, [6] Contest, [7] Gender
           const bib = runner[1] || '';
           const name = runner[2] || '';
           const time = runner[4] || '';
-          const rawNation = runner[5] || '';
+          let nationData = runner[5] || '';
           const contestDisplay = runner[6] || '5K';
           const genderDisplay = runner[7] || 'MASCULINO';
 
@@ -205,16 +181,16 @@
           const genderRaw = genderDisplay.toUpperCase();
           const genderClass = (genderRaw === 'M' || genderRaw === 'MALE' || genderRaw === 'MASCULINO') ? 'gender-m' : 'gender-f';
 
-          // Generate Flag Emoji / Text Badge
-          const flagSymbol = getFlagEmoji(rawNation);
+          // Fix Flag Image Paths (Prepend domain to relative paths)
           let nationHTML = '';
-          
-          if (flagSymbol.length > 0 && flagSymbol.length <= 4) {
-            // Render Emoji Flag (e.g. 🇵🇷)
-            nationHTML = `<span class="flag-emoji">${flagSymbol}</span>`;
-          } else {
-            // Render Text Badge Fallback (e.g. PUR)
-            nationHTML = `<span class="nation-flag">${flagSymbol || 'PUR'}</span>`;
+          if (nationData.includes('<img')) {
+            // Replaces src="/fw/flags/..." with src="https://my.raceresult.com/fw/flags/..."
+            nationHTML = nationData.replace('src="/', `src="${BASE_RR_URL}/`);
+          } else if (nationData.includes('.png') || nationData.includes('.jpg') || nationData.includes('/')) {
+            const fullImgUrl = nationData.startsWith('/') ? BASE_RR_URL + nationData : nationData;
+            nationHTML = `<img src="${fullImgUrl}" class="flag-img" alt="Flag" />`;
+          } else if (nationData) {
+            nationHTML = `<span class="nation-flag">${nationData}</span>`;
           }
 
           pill.innerHTML = `
