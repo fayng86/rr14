@@ -141,7 +141,7 @@
           pill.className = "runner-pill";
           
           pill.innerHTML = `
-            <span class="gender-tag">${runner.Category} || {runner.Gender}</span>
+            <span class="gender-tag">${runner.Category || 'MASCULINO'}</span>
             <strong>${runner.Name}</strong> 
             <span class="bib">#${runner.Bib}</span>
             <span class="time">${runner.Time}</span>
