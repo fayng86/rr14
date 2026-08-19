@@ -103,7 +103,7 @@
     .gender-f { background-color: #e91e63; } /* Pink for Female */
 
     /* FLAG IMAGE STYLING */
-    .flag-img {
+    .flag-img, .runner-pill img {
       height: 16px;
       width: auto;
       border-radius: 2px;
@@ -151,33 +151,44 @@
 
   <script>
     const API_URL = "https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9";
+    const BASE_RR_URL = "https://my.raceresult.com";
 
     async function updateTicker() {
       try {
         const response = await fetch(API_URL);
-        const data = await response.json();
+        const json = await response.json();
+        
+        // Extract array from RACE RESULT response
+        const rows = json.list ? json.list.data : json;
         
         const track = document.getElementById("ticker-track");
         track.innerHTML = ""; 
 
-        data.forEach(runner => {
+        rows.forEach(runner => {
           const pill = document.createElement("span");
           pill.className = "runner-pill";
 
-          // 1. Contest Name (e.g., "Melody Fest 5K")
-          const contestDisplay = runner.Contest || runner.Event || '5K';
+          // Mapping array indices from RACE RESULT Simple API JSON:
+          // [0] Position, [1] Bib, [2] Name, [3] City, [4] Time, [5] Flag HTML, [6] Contest, [7] Gender
+          const bib = runner[1] || '';
+          const name = runner[2] || '';
+          const time = runner[4] || '';
+          let nationData = runner[5] || '';
+          const contestDisplay = runner[6] || '5K';
+          const genderDisplay = runner[7] || 'MASCULINO';
 
-          // 2. Gender Styling
-          const genderRaw = (runner.Gender || "").toUpperCase();
-          const genderClass = (genderRaw === 'M' || genderRaw === 'MALE') ? 'gender-m' : 'gender-f';
-          const genderDisplay = runner.Gender || 'MALE';
+          // Gender Styling
+          const genderRaw = genderDisplay.toUpperCase();
+          const genderClass = (genderRaw === 'M' || genderRaw === 'MALE' || genderRaw === 'MASCULINO') ? 'gender-m' : 'gender-f';
 
-          // 3. Nation Image / Flag Handling
-          const nationData = runner.Nation || runner.Country || '';
+          // Fix Flag Image Paths (Prepend domain to relative paths)
           let nationHTML = '';
-
-          if (nationData.includes('.png') || nationData.includes('.jpg') || nationData.includes('.svg') || nationData.includes('/')) {
-            nationHTML = `<img src="${nationData}" class="flag-img" alt="Flag" />`;
+          if (nationData.includes('<img')) {
+            // Replaces src="/fw/flags/..." with src="https://my.raceresult.com/fw/flags/..."
+            nationHTML = nationData.replace('src="/', `src="${BASE_RR_URL}/`);
+          } else if (nationData.includes('.png') || nationData.includes('.jpg') || nationData.includes('/')) {
+            const fullImgUrl = nationData.startsWith('/') ? BASE_RR_URL + nationData : nationData;
+            nationHTML = `<img src="${fullImgUrl}" class="flag-img" alt="Flag" />`;
           } else if (nationData) {
             nationHTML = `<span class="nation-flag">${nationData}</span>`;
           }
@@ -186,9 +197,9 @@
             <span class="contest-tag">${contestDisplay}</span>
             <span class="gender-tag ${genderClass}">${genderDisplay}</span>
             ${nationHTML}
-            <strong>${runner.Name}</strong> 
-            <span class="bib">#${runner.Bib}</span>
-            <span class="time">${runner.Time}</span>
+            <strong>${name}</strong> 
+            <span class="bib">#${bib}</span>
+            <span class="time">${time}</span>
           `;
           
           track.appendChild(pill);
