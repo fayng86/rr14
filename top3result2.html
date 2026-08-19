@@ -101,6 +101,13 @@
     .gender-m { background-color: #1e88e5; } /* Blue for Male */
     .gender-f { background-color: #e91e63; } /* Pink for Female */
 
+    /* EMOJI FLAG STYLING */
+    .flag-emoji {
+      font-size: 16px;
+      line-height: 1;
+      display: inline-block;
+    }
+    
     /* NATION BADGE */
     .nation-flag {
       background-color: rgba(0, 0, 0, 0.3);
@@ -150,6 +157,53 @@
       { Category: "Marathon", Gender: "M", Nation: "KEN", Name: "Eliud N.", Bib: "101", Time: "02:05:15" }
     ];
 
+    // Converts IOC / UCI 3-letter nation codes into Emoji Flags
+    function getFlagEmoji(countryCode) {
+      if (!countryCode) return '';
+      
+      // Clean HTML tags or file paths if present
+      let cleaned = countryCode
+        .replace(/<[^>]*>?/gm, '')
+        .replace(/.*\/|\.[^.]*$/g, '')
+        .trim()
+        .toUpperCase();
+
+      // Dictionary mapping 3-Letter IOC/UCI codes to 2-Letter ISO Alpha-2 codes
+      const iocMap = {
+        'PUR': 'PR', // Puerto Rico
+        'USA': 'US', // United States
+        'KEN': 'KE', // Kenya
+        'MAS': 'MY', // Malaysia
+        'MEX': 'MX', // Mexico
+        'ESP': 'ES', // Spain
+        'COL': 'CO', // Colombia
+        'FRA': 'FR', // France
+        'GER': 'DE', // Germany
+        'GBR': 'GB', // Great Britain
+        'AUS': 'AU', // Australia
+        'JPN': 'JP', // Japan
+        'ETH': 'ET', // Ethiopia
+        'PHI': 'PH', // Philippines
+        'THA': 'TH', // Thailand
+        'SGP': 'SG', // Singapore
+        'INA': 'ID'  // Indonesia
+      };
+
+      if (iocMap[cleaned]) {
+        cleaned = iocMap[cleaned];
+      }
+
+      // Convert 2-letter ISO code to Flag Emoji
+      if (cleaned.length === 2) {
+        const codePoints = cleaned
+          .split('')
+          .map(char => 127397 + char.charCodeAt());
+        return String.fromCodePoint(...codePoints);
+      }
+      
+      return cleaned; // Fallback to raw string if no 2-letter mapping exists
+    }
+    
     function renderRunners(runners) {
       const track = document.getElementById("ticker-track");
       track.innerHTML = ""; 
@@ -164,6 +218,16 @@
         const genderClass = isMale ? 'gender-m' : 'gender-f';
         const genderDisplay = isMale ? 'MALE' : 'FEMALE';
 
+        // Generate Flag Emoji
+        const flagSymbol = getFlagEmoji(rawNation);
+        let nationHTML = '';
+        
+        if (flagSymbol.length > 0 && flagSymbol.length <= 4) {
+          nationHTML = `<span class="flag-emoji">${flagSymbol}</span>`;
+        } else {
+          nationHTML = `<span class="nation-flag">${flagSymbol}</span>`;
+        }
+        
         // Handle Country/Nation Code
         const nationDisplay = runner.Nation || runner.Country || 'PUR';
 
