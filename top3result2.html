@@ -228,6 +228,9 @@
           nationHTML = `<span class="nation-flag">${flagSymbol}</span>`;
         }
 
+        / Handle Nation / Country Code
+          const nationDisplay = runner.Nation || runner.Country || 'PUR'; // Fallback code
+        
         pill.innerHTML = `
           <span class="category">${runner.Category}</span>
           <span class="gender-tag ${genderClass}">${genderDisplay}</span>
