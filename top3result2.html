@@ -152,6 +152,7 @@
           const nationDisplay = runner.Nation || runner.Country || 'PUR'; // Fallback code
 
           pill.innerHTML = `
+            <span class="contest">#${runner.Contest}</span>
             <span class="gender-tag ${genderClass}">${genderDisplay}</span>
             <span class="nation-flag">🇵🇷 ${nationDisplay}</span>
             <strong>${runner.Name}</strong> 
