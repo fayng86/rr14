@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Top 3 Ticker</title>
+  <style>
+    /* RESET & BASE STYLES */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background-color: transparent;
+      overflow: hidden; /* Prevents scrollbars */
+    }
+
+    /* BANNER CONTAINER */
+    .ticker-container {
+      width: 100%;
+      background: linear-gradient(90deg, #d31027, #ea384d); /* Red gradient matching your video */
+      color: white;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    }
+
+    /* STATIC TOP 3 BADGE ON THE LEFT */
+    .badge {
+      background-color: #8a0c1a;
+      padding: 0 16px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: bold;
+      font-size: 14px;
+      z-index: 10;
+      white-space: nowrap;
+      box-shadow: 3px 0 6px rgba(0,0,0,0.2);
+    }
+
+    /* MARQUEE WRAPPER */
+    .marquee-wrapper {
+      width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    /* MOVING TRACK */
+    .marquee-track {
+      display: inline-block;
+      white-space: nowrap;
+      padding-left: 100%; /* Starts off-screen to the right */
+      animation: scroll-left 15s linear infinite; /* Controls speed */
+    }
+
+    /* SLIDING KEYFRAMES */
+    @keyframes scroll-left {
+      0% {
+        transform: translateX(0);
+      }
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+
+    /* RUNNER CARD STYLING */
+    .runner-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-right: 24px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .gender-tag {
+      background-color: #1e88e5; /* Blue pill tag */
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+
+    .bib {
+      color: #ffd700; /* Gold color for Bib */
+      font-size: 12px;
+    }
+
+    .time {
+      font-weight: bold;
+      background: rgba(0,0,0,0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ticker-container">
+    <!-- Static Badge Header -->
+    <div class="badge">
+      🏆 TOP 3
+    </div>
+
+    <!-- Scrolling Runner Area -->
+    <div class="marquee-wrapper">
+      <div class="marquee-track" id="ticker-track">
+        <!-- Runner details injected here dynamically -->
+        <span>Loading top runners...</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 1. Insert your Simple API endpoint URL here
+    const API_URL = "https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9";
+
+    async function updateTicker() {
+      try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        
+        const track = document.getElementById("ticker-track");
+        track.innerHTML = ""; // Clear current list
+
+        // 2. Loop through top finisher data
+        data.forEach(runner => {
+          const pill = document.createElement("span");
+          pill.className = "runner-pill";
+          
+          pill.innerHTML = `
+            <span class="gender-tag">${runner.Category || 'runner.Gender'}</span>
+            <strong>${runner.Name}</strong> 
+            <span class="bib">#${runner.Bib}</span>
+            <span class="time">${runner.Time}</span>
+          `;
+          
+          track.appendChild(pill);
+        });
+
+      } catch (err) {
+        console.error("Error loading RACE RESULT API data:", err);
+      }
+    }
+
+    // Initial Fetch & Update every 30 seconds
+    updateTicker();
+    setInterval(updateTicker, 30000);
+  </script>
+
+</body>
+</html>
