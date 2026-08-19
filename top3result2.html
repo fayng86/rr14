@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Top 3 Ticker with Contest, Gender, and Flag</title>
+  <style>
+    /* RESET & BASE STYLES */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background-color: transparent;
+      overflow: hidden;
+    }
+
+    /* BANNER CONTAINER */
+    .ticker-container {
+      width: 100%;
+      background: linear-gradient(90deg, #d31027, #ea384d);
+      color: white;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    }
+
+    /* STATIC BADGE */
+    .badge {
+      background-color: #8a0c1a;
+      padding: 0 16px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: bold;
+      font-size: 14px;
+      z-index: 10;
+      white-space: nowrap;
+      box-shadow: 3px 0 6px rgba(0,0,0,0.2);
+    }
+
+    /* MARQUEE WRAPPER */
+    .marquee-wrapper {
+      width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    /* MOVING TRACK */
+    .marquee-track {
+      display: inline-block;
+      white-space: nowrap;
+      padding-left: 100%;
+      animation: scroll-left 15s linear infinite;
+    }
+
+    @keyframes scroll-left {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* RUNNER CARD STYLING */
+    .runner-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-right: 24px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* CONTEST TAG */
+    .contest-tag {
+      background-color: rgba(0, 0, 0, 0.4);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* GENDER TAGS */
+    .gender-tag {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: bold;
+      color: #fff;
+    }
+    .gender-m { background-color: #1e88e5; } /* Blue for Male */
+    .gender-f { background-color: #e91e63; } /* Pink for Female */
+
+    /* FLAG IMAGE STYLING */
+    .flag-img {
+      height: 16px;
+      width: auto;
+      border-radius: 2px;
+      vertical-align: middle;
+      object-fit: contain;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    /* FALLBACK TEXT NATION BADGE */
+    .nation-flag {
+      background-color: rgba(0, 0, 0, 0.3);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .bib {
+      color: #ffd700;
+      font-size: 12px;
+    }
+
+    .time {
+      font-weight: bold;
+      background: rgba(0,0,0,0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ticker-container">
+    <div class="badge">
+      🏆 TOP 3
+    </div>
+
+    <div class="marquee-wrapper">
+      <div class="marquee-track" id="ticker-track">
+        <span>Loading top runners...</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9";
+
+    async function updateTicker() {
+      try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        
+        const track = document.getElementById("ticker-track");
+        track.innerHTML = ""; 
+
+        data.forEach(runner => {
+          const pill = document.createElement("span");
+          pill.className = "runner-pill";
+
+          // 1. Contest Name (e.g., "Melody Fest 5K")
+          const contestDisplay = runner.Contest || runner.Event || '5K';
+
+          // 2. Gender Styling
+          const genderRaw = (runner.Gender || "").toUpperCase();
+          const genderClass = (genderRaw === 'M' || genderRaw === 'MALE') ? 'gender-m' : 'gender-f';
+          const genderDisplay = runner.Gender || 'MALE';
+
+          // 3. Nation Image / Flag Handling
+          const nationData = runner.Nation || runner.Country || '';
+          let nationHTML = '';
+
+          if (nationData.includes('.png') || nationData.includes('.jpg') || nationData.includes('.svg') || nationData.includes('/')) {
+            nationHTML = `<img src="${nationData}" class="flag-img" alt="Flag" />`;
+          } else if (nationData) {
+            nationHTML = `<span class="nation-flag">${nationData}</span>`;
+          }
+
+          pill.innerHTML = `
+            <span class="contest-tag">${contestDisplay}</span>
+            <span class="gender-tag ${genderClass}">${genderDisplay}</span>
+            ${nationHTML}
+            <strong>${runner.Name}</strong> 
+            <span class="bib">#${runner.Bib}</span>
+            <span class="time">${runner.Time}</span>
+          `;
+          
+          track.appendChild(pill);
+        });
+
+      } catch (err) {
+        console.error("Error loading RACE RESULT API data:", err);
+      }
+    }
+
+    updateTicker();
+    setInterval(updateTicker, 30000);
+  </script>
+
+</body>
+</html>
