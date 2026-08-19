@@ -165,7 +165,7 @@
           pill.className = "runner-pill";
 
           // 1. Contest Name (e.g., "Melody Fest 5K")
-          const contestDisplay = runner.Contest || runner.Event || '5K';
+          const contestDisplay = runner.Contest || runner.Event;
 
           // 2. Gender Styling
           const genderRaw = (runner.Gender || "").toUpperCase();
