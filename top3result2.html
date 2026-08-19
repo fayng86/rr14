@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Live Top 3 Ticker with Gender and Nation</title>
+  <title>Live Top 3 Results</title>
   <style>
     /* RESET & BASE STYLES */
     * {
@@ -168,7 +168,7 @@
         const nationDisplay = runner.Nation || runner.Country || 'PUR';
 
         pill.innerHTML = `
-          <span class="contest">${runner.Contest}</span>
+          <span class="contest">${runner.Category}</span>
           <span class="gender-tag ${genderClass}">${genderDisplay}</span>
           <span class="nation-flag">${nationDisplay}</span>
           <strong>${runner.Name}</strong> 
