@@ -162,7 +162,7 @@
         const genderRaw = (runner.Gender || "").toUpperCase();
         const isMale = (genderRaw === 'M' || genderRaw === 'MALE');
         const genderClass = isMale ? 'gender-m' : 'gender-f';
-        const genderDisplay = isMale ? 'M' : 'F';
+        const genderDisplay = isMale ? 'MALE' : 'FEMALE';
 
         // Handle Country/Nation Code
         const nationDisplay = runner.Nation || runner.Country || 'PUR';
