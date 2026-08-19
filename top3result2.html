@@ -78,8 +78,8 @@
       font-weight: 500;
     }
 
-    /* CONTEST */
-    .contest {
+    /* CATEGORY */
+    .category {
       font-size: 11px;
       padding: 2px 6px;
       border-radius: 4px;
@@ -145,9 +145,9 @@
 
     // Fallback data for testing/offline support
     const MOCK_DATA = [
-      { Contest: "Marathon", Gender: "M", Nation: "PUR", Name: "Carlos Rivera", Bib: "102", Time: "02:14:32" },
-      { Contest: "Marathon", Gender: "F", Nation: "USA", Name: "Sarah Jenkins", Bib: "205", Time: "02:28:10" },
-      { Contest: "Marathon", Gender: "M", Nation: "KEN", Name: "Eliud N.", Bib: "101", Time: "02:05:15" }
+      { Category: "Marathon", Gender: "M", Nation: "PUR", Name: "Carlos Rivera", Bib: "102", Time: "02:14:32" },
+      { Category: "Marathon", Gender: "F", Nation: "USA", Name: "Sarah Jenkins", Bib: "205", Time: "02:28:10" },
+      { Category: "Marathon", Gender: "M", Nation: "KEN", Name: "Eliud N.", Bib: "101", Time: "02:05:15" }
     ];
 
     function renderRunners(runners) {
@@ -168,7 +168,7 @@
         const nationDisplay = runner.Nation || runner.Country || 'PUR';
 
         pill.innerHTML = `
-          <span class="contest">${runner.Category}</span>
+          <span class="category">${runner.Category}</span>
           <span class="gender-tag ${genderClass}">${genderDisplay}</span>
           <span class="nation-flag">${nationDisplay}</span>
           <strong>${runner.Name}</strong> 
