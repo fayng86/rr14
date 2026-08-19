@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Live Top 3 Ticker with Contest, Gender, and Flag</title>
+  <title>Live Top 3 Ticker with Gender and Nation</title>
   <style>
     /* RESET & BASE STYLES */
     * {
@@ -57,7 +57,7 @@
       display: inline-block;
       white-space: nowrap;
       padding-left: 100%;
-      animation: scroll-left 60s linear infinite;
+      animation: scroll-left 15s linear infinite;
     }
 
     @keyframes scroll-left {
@@ -78,18 +78,6 @@
       font-weight: 500;
     }
 
-    /* CONTEST TAG */
-    .contest-tag {
-      background-color: rgba(0, 0, 0, 0.4);
-      color: #fff;
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
     /* GENDER TAGS */
     .gender-tag {
       font-size: 11px;
@@ -100,25 +88,16 @@
       color: #fff;
     }
     .gender-m { background-color: #1e88e5; } /* Blue for Male */
-    .gender-f { background-color: #e91e63; } /* Pink for Female */
+    .gender-f { background-color: #e91e63; } /* Pink/Magenta for Female */
 
-    /* FLAG IMAGE STYLING */
-    .flag-img {
-      height: 16px;
-      width: auto;
-      border-radius: 2px;
-      vertical-align: middle;
-      object-fit: contain;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    }
-
-    /* FALLBACK TEXT NATION BADGE */
+    /* NATION BADGE */
     .nation-flag {
       background-color: rgba(0, 0, 0, 0.3);
       font-size: 11px;
       padding: 2px 6px;
       border-radius: 3px;
       font-weight: bold;
+      letter-spacing: 0.5px;
       text-transform: uppercase;
     }
 
@@ -150,7 +129,7 @@
   </div>
 
   <script>
-    const API_URL = "https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9";
+    const API_URL = "YOUR_RACE_RESULT_SIMPLE_API_URL_HERE";
 
     async function updateTicker() {
       try {
@@ -164,28 +143,17 @@
           const pill = document.createElement("span");
           pill.className = "runner-pill";
 
-          // 1. Contest Name (e.g., "Melody Fest 5K")
-          const contestDisplay = runner.Contest || runner.Event;
-
-          // 2. Gender Styling
+          // Handle Gender dynamic class for styling (blue/pink)
           const genderRaw = (runner.Gender || "").toUpperCase();
           const genderClass = (genderRaw === 'M' || genderRaw === 'MALE') ? 'gender-m' : 'gender-f';
           const genderDisplay = runner.Gender || 'MALE';
 
-          // 3. Nation Image / Flag Handling
-          const nationData = runner.Nation || runner.Country || '';
-          let nationHTML = '';
-
-          if (nationData.includes('.png') || nationData.includes('.jpg') || nationData.includes('.svg') || nationData.includes('/')) {
-            nationHTML = `<img src="${nationData}" class="flag-img" alt="Flag" />`;
-          } else if (nationData) {
-            nationHTML = `<span class="nation-flag">${nationData}</span>`;
-          }
+          // Handle Nation / Country Code
+          const nationDisplay = runner.Nation || runner.Country || 'PUR'; // Fallback code
 
           pill.innerHTML = `
-            <span class="contest-tag">${contestDisplay}</span>
             <span class="gender-tag ${genderClass}">${genderDisplay}</span>
-            ${nationHTML}
+            <span class="nation-flag">🇵🇷 ${nationDisplay}</span>
             <strong>${runner.Name}</strong> 
             <span class="bib">#${runner.Bib}</span>
             <span class="time">${runner.Time}</span>
