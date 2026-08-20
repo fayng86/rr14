@@ -2,25 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Certificate Image Generator</title>
   <!-- JavaScript engine to convert HTML to PNG -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   
   <style>
-    /* 1. Certificate Canvas Container */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    /* Search & Control UI Elements */
+    .search-container {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search-container input {
+      padding: 10px;
+      font-size: 16px;
+      width: 220px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .search-container button, .btn-action {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #0056b3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .search-container button:hover, .btn-action:hover {
+      background-color: #003d80;
+    }
+
+    /* Certificate Canvas Container */
     #certificate-card {
       width: 1000px;           /* Match your background image width */
       height: 700px;          /* Match your background image height */
       position: relative;     /* Enables exact positioning for overlaid text */
-      background-image: url('EO9A0802.jpg'); /* YOUR IMAGE HERE */
+      background-image: url('certificate-template.png'); /* ENSURE FILE EXACTLY MATCHES THIS NAME IN YOUR REPO */
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      font-family: 'Arial', sans-serif;
+      border: 1px solid #ddd;
       box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     }
 
-    /* 2. Position Dynamic JSON Text Over the Background */
+    /* Position Dynamic Text Over Background */
     .overlay-text {
       position: absolute;
       width: 100%;
@@ -44,65 +80,82 @@
 </head>
 <body>
 
+  <h2>Certificate Search & Image Generator</h2>
+
+  <!-- Interactive Search Controls -->
+  <div class="search-container">
+    <input type="text" id="bibInput" placeholder="Enter Bib Number (e.g. 101)">
+    <button onclick="fetchRunnerData()">Search Certificate</button>
+    <button class="btn-action" onclick="generateImage()">Generate PNG Photo</button>
+  </div>
+
   <!-- Certificate Canvas Area -->
   <div id="certificate-card">
-    <div id="runner-name" class="overlay-text">Loading...</div>
+    <div id="runner-name" class="overlay-text">Please Enter Bib Number</div>
     <div id="finish-time" class="overlay-text">---</div>
   </div>
 
   <br>
-  <button onclick="generateImage()" style="padding: 10px 20px; font-size: 16px;">Generate PNG Photo</button>
-
-  <h3>Generated PNG Preview (Right-click to Save):</h3>
+  <h3>Generated PNG Preview (Right-click or hold to Save):</h3>
   <div id="image-output"></div>
 
   <script>
-    // Reads bib number from URL parameter: index.html?bib=101
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetBib = urlParams.get('bib') || "101"; 
-
-    // Replace with your active API Endpoint URL
-    const API_ENDPOINT = `https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9?bib=${targetBib}`;
-
-    // Fetch dynamic JSON directly from the API
-    fetch(API_ENDPOINT, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-        // Add authorization headers if required by your API:
-        // 'Authorization': 'Bearer YOUR_API_TOKEN'
+    // Load bib automatically if passed via URL parameter (?bib=101)
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const bibParam = urlParams.get('bib');
+      if (bibParam) {
+        document.getElementById('bibInput').value = bibParam;
+        fetchRunnerData();
       }
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        // Option A: If API returns a single participant object directly
-        // Example response: { "bib": "101", "name": "John Doe", "time": "00:45:12" }
-        if (data && data.name) {
-          document.getElementById('runner-name').innerText = data.name;
-          document.getElementById('finish-time').innerText = "Finish Time: " + data.time;
-        } 
-        // Option B: If API returns an array or wrapped list
-        else if (data.participants) {
-          const runner = data.participants.find(p => p.bib == targetBib);
-          if (runner) {
-            document.getElementById('runner-name').innerText = runner.name;
-            document.getElementById('finish-time').innerText = "Finish Time: " + runner.time;
-          } else {
-            document.getElementById('runner-name').innerText = "Runner Not Found";
-          }
-        }
-      })
-      .catch(err => {
-        console.error("Error fetching API data:", err);
-        document.getElementById('runner-name').innerText = "Error Loading Data";
-      });
+    };
 
-    // Converts the HTML card element to a PNG image
+    function fetchRunnerData() {
+      const bib = document.getElementById('bibInput').value.trim();
+      if (!bib) {
+        alert("Please enter a Bib Number.");
+        return;
+      }
+
+      document.getElementById('runner-name').innerText = "Loading...";
+      document.getElementById('finish-time').innerText = "---";
+
+      // Live RACE RESULT 14 Endpoint
+      const API_ENDPOINT = `https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9`;
+
+      fetch(API_ENDPOINT)
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          // Normalize array response
+          const list = Array.isArray(data) ? data : (data.list || data.participants || data.data || []);
+          
+          // Match bib number across standard or custom field keys
+          const runner = list.find(p => {
+            const runnerBib = p.bib || p.Bib || p.BIB || p.BibNo || p[0];
+            return String(runnerBib).trim() === bib;
+          });
+
+          if (runner) {
+            // Extract Name and Time using common field key variations
+            const name = runner.Name || runner.name || runner.FullName || runner.FULLNAME || runner[1] || "Runner Found";
+            const time = runner.Time || runner.time || runner.FinishTime || runner.FINISHTIME || runner[2] || "";
+
+            document.getElementById('runner-name').innerText = name;
+            document.getElementById('finish-time').innerText = time ? "Finish Time: " + time : "";
+          } else {
+            document.getElementById('runner-name').innerText = "Bib #" + bib + " Not Found";
+          }
+        })
+        .catch(err => {
+          console.error("API Error:", err);
+          document.getElementById('runner-name').innerText = "Error Loading Data";
+        });
+    }
+
+    // Convert canvas block to exportable PNG image
     function generateImage() {
       const element = document.getElementById('certificate-card');
 
@@ -110,6 +163,7 @@
         const imgData = canvas.toDataURL('image/png');
         const img = document.createElement('img');
         img.src = imgData;
+        img.style.maxWidth = "100%";
 
         const outputDiv = document.getElementById('image-output');
         outputDiv.innerHTML = '';
