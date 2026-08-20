@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Certificate Image Generator</title>
+  <!-- JavaScript engine to convert HTML to PNG -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+  <style>
+    /* 1. Certificate Canvas Container */
+    #certificate-card {
+      width: 1000px;           /* Match your background image width */
+      height: 700px;          /* Match your background image height */
+      position: relative;     /* Enables exact positioning for overlaid text */
+      background-image: url('certificate-template.png'); /* YOUR IMAGE HERE */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      font-family: 'Arial', sans-serif;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    /* 2. Position Dynamic JSON Text Over the Background */
+    .overlay-text {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      color: #1a2b4c;
+    }
+
+    #runner-name {
+      top: 300px;             /* Adjust vertical position (Y-axis) */
+      font-size: 36px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    #finish-time {
+      top: 400px;             /* Adjust vertical position (Y-axis) */
+      font-size: 24px;
+      font-weight: normal;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Certificate Canvas Area -->
+  <div id="certificate-card">
+    <div id="runner-name" class="overlay-text">Loading...</div>
+    <div id="finish-time" class="overlay-text">---</div>
+  </div>
+
+  <br>
+  <button onclick="generateImage()" style="padding: 10px 20px; font-size: 16px;">Generate PNG Photo</button>
+
+  <h3>Generated PNG Preview (Right-click to Save):</h3>
+  <div id="image-output"></div>
+
+  <script>
+    // Reads bib number from URL parameter: index.html?bib=101
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetBib = urlParams.get('bib') || "101"; 
+
+    // Replace with your active API Endpoint URL
+    const API_ENDPOINT = `https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9?bib=${targetBib}`;
+
+    // Fetch dynamic JSON directly from the API
+    fetch(API_ENDPOINT, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+        // Add authorization headers if required by your API:
+        // 'Authorization': 'Bearer YOUR_API_TOKEN'
+      }
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Option A: If API returns a single participant object directly
+        // Example response: { "bib": "101", "name": "John Doe", "time": "00:45:12" }
+        if (data && data.name) {
+          document.getElementById('runner-name').innerText = data.name;
+          document.getElementById('finish-time').innerText = "Finish Time: " + data.time;
+        } 
+        // Option B: If API returns an array or wrapped list
+        else if (data.participants) {
+          const runner = data.participants.find(p => p.bib == targetBib);
+          if (runner) {
+            document.getElementById('runner-name').innerText = runner.name;
+            document.getElementById('finish-time').innerText = "Finish Time: " + runner.time;
+          } else {
+            document.getElementById('runner-name').innerText = "Runner Not Found";
+          }
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching API data:", err);
+        document.getElementById('runner-name').innerText = "Error Loading Data";
+      });
+
+    // Converts the HTML card element to a PNG image
+    function generateImage() {
+      const element = document.getElementById('certificate-card');
+
+      html2canvas(element, { useCORS: true }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const img = document.createElement('img');
+        img.src = imgData;
+
+        const outputDiv = document.getElementById('image-output');
+        outputDiv.innerHTML = '';
+        outputDiv.appendChild(img);
+      });
+    }
+  </script>
+</body>
+</html>
