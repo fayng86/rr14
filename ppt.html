@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Wedding Guest Wishes & Photo Wall</title>
+  
+  <!-- Reveal.js Engine for Slide Transitions -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/serif.min.css">
 
@@ -21,16 +23,17 @@
       gap: 20px;
       width: 100%;
       height: 100%;
+      box-sizing: border-box;
       padding: 10px;
     }
 
-    /* Elegant Wedding Card Layout */
+    /* Card Box Layout */
     .wedding-card {
-      background-image: url('wedding-card-frame.png'); /* Custom floral/elegant frame */
+      background-image: url('wedding-card-frame.png'); /* Frame image in your repo */
       background-size: cover;
       background-position: center;
       border-radius: 12px;
-      padding: 20px;
+      padding: 25px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       display: flex;
       flex-direction: column;
@@ -61,44 +64,66 @@
     </div>
   </div>
 
-  <script src="https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+  
   <script>
-    // Example JSON payload (can be fetched from a Google Sheet API or Webhook)
-    const weddingData = [
-      { name: "Sarah & Mark", message: "Wishing you both a lifetime of love and happiness!" },
-      { name: "Uncle David", message: "So happy to celebrate this beautiful day with you!" },
-      { name: "Jessica T.", message: "Cheers to the perfect couple!" },
-      { name: "Alex & Emily", message: "May your journey together be filled with joy." },
-      { name: "The Tan Family", message: "Congratulations! Wishing you eternal bliss." }
-    ];
+    // REPLACE THIS WITH YOUR ACTUAL LIVE JSON API URL
+    // (e.g. Google Sheets API, Sheet Best, or custom Webhook)
+    const JSON_API_URL = "https://your-api-domain.com/wedding-wishes.json";
 
-    let slidesHTML = "";
+    fetch(JSON_API_URL)
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        // Normalize data format (handles array or wrapped list objects)
+        const guestList = Array.isArray(data) ? data : (data.messages || data.data || []);
 
-    // Chunk dataset into groups of 4 per slide
-    for (let i = 0; i < weddingData.length; i += 4) {
-      const group = weddingData.slice(i, i + 4);
-      slidesHTML += `<section><div class="wedding-grid">`;
+        if (guestList.length === 0) {
+          document.getElementById('wedding-slides').innerHTML = "<section><h2>No messages received yet.</h2></section>";
+          return;
+        }
 
-      group.forEach(item => {
-        slidesHTML += `
-          <div class="wedding-card">
-            <div class="guest-name">${item.name}</div>
-            <div class="guest-message">"${item.message}"</div>
-          </div>
-        `;
+        let slidesHTML = "";
+
+        // Loop through data and group into sets of 4 cards per slide
+        for (let i = 0; i < guestList.length; i += 4) {
+          const group = guestList.slice(i, i + 4);
+          
+          slidesHTML += `<section><div class="wedding-grid">`;
+
+          group.forEach(item => {
+            // Flexible keys to adapt to various JSON structures
+            const name = item.name || item.Name || item.guest || "Dear Couple";
+            const message = item.message || item.Message || item.text || "";
+
+            slidesHTML += `
+              <div class="wedding-card">
+                <div class="guest-name">${name}</div>
+                <div class="guest-message">"${message}"</div>
+              </div>
+            `;
+          });
+
+          slidesHTML += `</div></section>`;
+        }
+
+        // Insert dynamically created slides into the DOM
+        document.getElementById('wedding-slides').innerHTML = slidesHTML;
+
+        // Initialize Reveal.js Slideshow
+        Reveal.initialize({
+          controls: false,     // Hide navigation arrows for a clean look
+          loop: true,         // Loop back to the first slide automatically
+          autoSlide: 6000,     // Transition automatically every 6 seconds (6000ms)
+          transition: 'fade'  // Smooth fade transition between slides
+        });
+      })
+      .catch(err => {
+        console.error("Failed to load JSON data:", err);
+        document.getElementById('wedding-slides').innerHTML = "<section><h2>Error Loading Wishes</h2></section>";
       });
-
-      slidesHTML += `</div></section>`;
-    }
-
-    document.getElementById('wedding-slides').innerHTML = slidesHTML;
-
-    // Start auto-advancing slideshow (every 6 seconds)
-    Reveal.initialize({
-      controls: false,
-      loop: true,
-      autoSlide: 6000
-    });
   </script>
 </body>
 </html>
