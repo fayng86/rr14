@@ -2,21 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Wedding Guest Wishes & Photo Wall</title>
+  <title>Race Results Slide Presentation</title>
   
   <!-- Reveal.js Engine for Slide Transitions -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/serif.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
 
   <style>
-    /* 16:9 Widescreen Presentation Canvas */
+    /* 16:9 Widescreen Slide Dimensions */
     .reveal .slides {
       width: 1280px !important;
       height: 720px !important;
     }
 
-    /* 2x2 Grid for 4 Wedding Cards per Slide */
-    .wedding-grid {
+    /* 2x2 Grid Layout for 4 Cards per Slide */
+    .results-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       grid-template-rows: 1fr 1fr;
@@ -27,81 +27,127 @@
       padding: 10px;
     }
 
-    /* Card Box Layout */
-    .wedding-card {
-      background-image: url('certificate-template.png.jpg'); /* Frame image in your repo */
+    /* Individual Participant Card Layout */
+    .runner-card {
+      position: relative;
+      background-image: url('certificate-template.png.jpg'); /* Background image in your repo */
       background-size: cover;
       background-position: center;
-      border-radius: 12px;
-      padding: 25px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border: 2px solid #ffffff;
+      border-radius: 8px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      color: #4a3b32;
+      color: #1a2b4c;
+      font-family: Arial, sans-serif;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
 
-    .guest-name {
-      font-size: 26px;
+    /* Top Badges (Rank, Category, Bib) */
+    .card-badge-top-left {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      font-size: 16px;
       font-weight: bold;
-      font-family: 'Georgia', serif;
-      margin-bottom: 10px;
+      background: #0056b3;
+      color: #ffffff;
+      padding: 4px 10px;
+      border-radius: 4px;
     }
 
-    .guest-message {
-      font-size: 18px;
-      font-style: italic;
+    .card-badge-top-right {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      font-size: 16px;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.9);
+      color: #1a2b4c;
+      padding: 4px 10px;
+      border-radius: 4px;
+    }
+
+    /* Text Overlays inside each card */
+    .card-name {
+      font-size: 24px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 8px;
       text-align: center;
+      padding: 0 15px;
+    }
+
+    .card-details {
+      font-size: 18px;
+      color: #333;
+      margin-top: 5px;
+    }
+
+    .card-nation {
+      font-size: 14px;
+      color: #666;
+      margin-top: 2px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
   <div class="reveal">
-    <div class="slides" id="wedding-slides">
-      <section><h2>Loading Guest Messages...</h2></section>
+    <div class="slides" id="slides-container">
+      <section>
+        <h2>Loading Presentation Slides...</h2>
+      </section>
     </div>
   </div>
 
+  <!-- Reveal.js JavaScript Engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
-  
-  <script>
-    // REPLACE THIS WITH YOUR ACTUAL LIVE JSON API URL
-    // (e.g. Google Sheets API, Sheet Best, or custom Webhook)
-    const JSON_API_URL = "https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9";
 
-    fetch(JSON_API_URL)
+  <script>
+    // Replace with your actual RACE RESULT 14 JSON API endpoint
+    const API_ENDPOINT = `https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9`;
+
+    fetch(API_ENDPOINT)
       .then(response => {
         if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
         return response.json();
       })
       .then(data => {
-        // Normalize data format (handles array or wrapped list objects)
-        const guestList = Array.isArray(data) ? data : (data.messages || data.data || []);
+        const list = Array.isArray(data) ? data : (data.list || data.participants || data.data || []);
 
-        if (guestList.length === 0) {
-          document.getElementById('wedding-slides').innerHTML = "<section><h2>No messages received yet.</h2></section>";
+        if (list.length === 0) {
+          document.getElementById('slides-container').innerHTML = "<section><h2>No Participants Found</h2></section>";
           return;
         }
 
         let slidesHTML = "";
 
-        // Loop through data and group into sets of 4 cards per slide
-        for (let i = 0; i < guestList.length; i += 4) {
-          const group = guestList.slice(i, i + 4);
+        // Loop through array and group into sets of 4 cards per slide
+        for (let i = 0; i < list.length; i += 4) {
+          const group = list.slice(i, i + 4);
           
-          slidesHTML += `<section><div class="wedding-grid">`;
+          slidesHTML += `<section><div class="results-grid">`;
 
-          group.forEach(item => {
-            // Flexible keys to adapt to various JSON structures
-            const name = item.name || item.Name || item.guest || "Dear Couple";
-            const message = item.message || item.Message || item.text || "";
+          group.forEach(runner => {
+            // Mapping fields explicitly to match your JSON keys
+            const rank = runner.Rank ? `#${runner.Rank}` : "";
+            const category = runner.Category || "";
+            const bib = runner.Bib || "N/A";
+            const name = runner.Name || "Unknown Runner";
+            const time = runner.Time || "";
+            const nation = runner.Nation || "";
 
             slidesHTML += `
-              <div class="wedding-card">
-                <div class="guest-name">${name}</div>
-                <div class="guest-message">"${message}"</div>
+              <div class="runner-card">
+                <div class="card-badge-top-left">${category} ${rank}</div>
+                <div class="card-badge-top-right">Bib: ${bib}</div>
+                
+                <div class="card-name">${name}</div>
+                <div class="card-details">${time ? "Time: " + time : ""}</div>
+                <div class="card-nation">${nation ? "(" + nation + ")" : ""}</div>
               </div>
             `;
           });
@@ -109,20 +155,23 @@
           slidesHTML += `</div></section>`;
         }
 
-        // Insert dynamically created slides into the DOM
-        document.getElementById('wedding-slides').innerHTML = slidesHTML;
+        // Insert generated slides into the presentation container
+        document.getElementById('slides-container').innerHTML = slidesHTML;
 
-        // Initialize Reveal.js Slideshow
+        // Initialize Reveal.js Slideshow Controls
         Reveal.initialize({
-          controls: false,     // Hide navigation arrows for a clean look
-          loop: true,         // Loop back to the first slide automatically
-          autoSlide: 6000,     // Transition automatically every 6 seconds (6000ms)
-          transition: 'fade'  // Smooth fade transition between slides
+          controls: true,        // Displays navigation arrows on screen
+          progress: true,        // Displays bottom progress bar
+          slideNumber: true,     // Shows current slide number
+          keyboard: true,        // Navigate using keyboard arrows
+          loop: true,            // Auto-loops back to slide 1 at the end
+          autoSlide: 5000,       // Auto-advances slides every 5 seconds (5000ms)
+          transition: 'fade'     // Smooth transition between slides
         });
       })
       .catch(err => {
-        console.error("Failed to load JSON data:", err);
-        document.getElementById('wedding-slides').innerHTML = "<section><h2>Error Loading Wishes</h2></section>";
+        console.error("API Error:", err);
+        document.getElementById('slides-container').innerHTML = "<section><h2>Error Loading Presentation Data</h2></section>";
       });
   </script>
 </body>
