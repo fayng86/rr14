@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wedding Guest Wishes & Photo Wall</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/serif.min.css">
+
+  <style>
+    /* 16:9 Widescreen Presentation Canvas */
+    .reveal .slides {
+      width: 1280px !important;
+      height: 720px !important;
+    }
+
+    /* 2x2 Grid for 4 Wedding Cards per Slide */
+    .wedding-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 20px;
+      width: 100%;
+      height: 100%;
+      padding: 10px;
+    }
+
+    /* Elegant Wedding Card Layout */
+    .wedding-card {
+      background-image: url('wedding-card-frame.png'); /* Custom floral/elegant frame */
+      background-size: cover;
+      background-position: center;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #4a3b32;
+    }
+
+    .guest-name {
+      font-size: 26px;
+      font-weight: bold;
+      font-family: 'Georgia', serif;
+      margin-bottom: 10px;
+    }
+
+    .guest-message {
+      font-size: 18px;
+      font-style: italic;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="reveal">
+    <div class="slides" id="wedding-slides">
+      <section><h2>Loading Guest Messages...</h2></section>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+  <script>
+    // Example JSON payload (can be fetched from a Google Sheet API or Webhook)
+    const weddingData = [
+      { name: "Sarah & Mark", message: "Wishing you both a lifetime of love and happiness!" },
+      { name: "Uncle David", message: "So happy to celebrate this beautiful day with you!" },
+      { name: "Jessica T.", message: "Cheers to the perfect couple!" },
+      { name: "Alex & Emily", message: "May your journey together be filled with joy." },
+      { name: "The Tan Family", message: "Congratulations! Wishing you eternal bliss." }
+    ];
+
+    let slidesHTML = "";
+
+    // Chunk dataset into groups of 4 per slide
+    for (let i = 0; i < weddingData.length; i += 4) {
+      const group = weddingData.slice(i, i + 4);
+      slidesHTML += `<section><div class="wedding-grid">`;
+
+      group.forEach(item => {
+        slidesHTML += `
+          <div class="wedding-card">
+            <div class="guest-name">${item.name}</div>
+            <div class="guest-message">"${item.message}"</div>
+          </div>
+        `;
+      });
+
+      slidesHTML += `</div></section>`;
+    }
+
+    document.getElementById('wedding-slides').innerHTML = slidesHTML;
+
+    // Start auto-advancing slideshow (every 6 seconds)
+    Reveal.initialize({
+      controls: false,
+      loop: true,
+      autoSlide: 6000
+    });
+  </script>
+</body>
+</html>
