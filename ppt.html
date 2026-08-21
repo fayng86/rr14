@@ -37,7 +37,7 @@
       box-sizing: border-box;
     }
 
-    /* 3. Runner Card Base Layout (Background image now set dynamically via JS) */
+    /* 3. Runner Card Base Layout */
     .runner-card {
       position: relative;
       background-size: cover;
@@ -130,7 +130,6 @@
     const API_ENDPOINT = `https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9`;
 
     // ARRAY OF YOUR DIFFERENT BACKGROUND PHOTOS
-    // Update these filenames to match the photo files in your GitHub repository
     const backgroundPhotos = [
       'photo1.jpg',
       'photo2.jpg',
@@ -167,8 +166,6 @@
             const time = runner.Time || "";
             const nation = runner.Nation || "";
 
-            // Assign a unique photo background based on card position (0, 1, 2, or 3)
-            // Or use runner.Photo if your JSON payload includes an image URL field per runner
             const bgImage = runner.Photo || backgroundPhotos[idx % backgroundPhotos.length];
 
             slidesHTML += `
@@ -189,7 +186,7 @@
         // Insert generated slides into DOM
         document.getElementById('slides-container').innerHTML = slidesHTML;
 
-        // Initialize Reveal.js Config with responsive sizing
+        // Initialize Reveal.js Config with Fancy Transition Effect
         Reveal.initialize({
           width: "100%",
           height: "100%",
@@ -202,7 +199,10 @@
           keyboard: true,
           loop: true,
           autoSlide: 5000,
-          transition: 'fade'
+          
+          // Fancier 3D Transition Settings
+          transition: 'convex',        // Options: 'convex', 'concave', 'zoom', 'flip', 'spin', 'slide'
+          transitionSpeed: 'slow'       // Options: 'default', 'fast', 'slow'
         });
       })
       .catch(err => {
