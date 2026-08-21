@@ -2,20 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Race Results Slide Presentation</title>
+  <title>Race Results Presentation</title>
   
-  <!-- Reveal.js Engine for Slide Transitions -->
+  <!-- Reveal.js Engine -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
 
   <style>
-    /* 16:9 Widescreen Slide Dimensions */
+    /* 1. Force Reveal.js to fill 100% of the Screen Area */
     .reveal .slides {
-      width: 1280px !important;
+      width: 100% !important;
       height: 100% !important;
+      top: 0 !important;
+      left: 0 !important;
+      margin: 0 !important;
+      padding: 20px !important;
+      box-sizing: border-box !important;
     }
 
-    /* 2x2 Grid Layout for 4 Cards per Slide */
+    .reveal section {
+      width: 100% !important;
+      height: 100% !important;
+      padding: 0 !important;
+    }
+
+    /* 2. 2x2 Grid fill complete slide height & width */
     .results-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -24,71 +35,81 @@
       width: 100%;
       height: 100%;
       box-sizing: border-box;
-      padding: 10px;
     }
 
-    /* Individual Participant Card Layout */
+    /* 3. Runner Card Frame Expansion */
     .runner-card {
       position: relative;
-      background-image: url('certificate-template.png.jpg'); /* Background image in your repo */
+      background-image: url('certificate-template.png.jpg'); /* Your background image */
       background-size: cover;
       background-position: center;
-      border: 2px solid #ffffff;
-      border-radius: 8px;
+      background-repeat: no-repeat;
+      border: 3px solid #ffffff;
+      border-radius: 12px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       color: #1a2b4c;
-      font-family: Arial, sans-serif;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      font-family: 'Arial', sans-serif;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
     }
 
-    /* Top Badges (Rank, Category, Bib) */
+    /* 4. Top Badges (Rank & Bib) */
     .card-badge-top-left {
       position: absolute;
-      top: 15px;
-      left: 15px;
-      font-size: 16px;
+      top: 20px;
+      left: 20px;
+      font-size: 20px;
       font-weight: bold;
       background: #0056b3;
       color: #ffffff;
-      padding: 4px 10px;
-      border-radius: 4px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
 
     .card-badge-top-right {
       position: absolute;
-      top: 15px;
-      right: 15px;
-      font-size: 16px;
+      top: 20px;
+      right: 20px;
+      font-size: 20px;
       font-weight: bold;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.95);
       color: #1a2b4c;
-      padding: 4px 10px;
-      border-radius: 4px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
 
-    /* Text Overlays inside each card */
+    /* 5. Center Overlay Content Styling */
     .card-name {
-      font-size: 24px;
+      font-size: 32px;
       font-weight: bold;
       text-transform: uppercase;
-      margin-bottom: 8px;
       text-align: center;
-      padding: 0 15px;
+      padding: 0 20px;
+      margin-bottom: 12px;
+      line-height: 1.2;
+      color: #0d1b2a;
+      /* Subtle text shadow for high contrast over light background photos */
+      text-shadow: 0 1px 2px rgba(255,255,255,0.8); 
     }
 
     .card-details {
-      font-size: 18px;
-      color: #333;
+      font-size: 26px;
+      font-weight: bold;
+      color: #1a2b4c;
       margin-top: 5px;
     }
 
     .card-nation {
-      font-size: 14px;
-      color: #666;
-      margin-top: 2px;
+      font-size: 20px;
+      color: #4A5568;
+      margin-top: 5px;
       font-weight: bold;
     }
   </style>
@@ -107,7 +128,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
 
   <script>
-    // Replace with your actual RACE RESULT 14 JSON API endpoint
+    // Live RACE RESULT 14 JSON API endpoint
     const API_ENDPOINT = `https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9`;
 
     fetch(API_ENDPOINT)
@@ -125,14 +146,13 @@
 
         let slidesHTML = "";
 
-        // Loop through array and group into sets of 4 cards per slide
+        // Chunk dataset into groups of 4 cards per slide
         for (let i = 0; i < list.length; i += 4) {
           const group = list.slice(i, i + 4);
           
           slidesHTML += `<section><div class="results-grid">`;
 
           group.forEach(runner => {
-            // Mapping fields explicitly to match your JSON keys
             const rank = runner.Rank ? `#${runner.Rank}` : "";
             const category = runner.Category || "";
             const bib = runner.Bib || "N/A";
@@ -155,18 +175,23 @@
           slidesHTML += `</div></section>`;
         }
 
-        // Insert generated slides into the presentation container
+        // Insert generated slides into DOM
         document.getElementById('slides-container').innerHTML = slidesHTML;
 
-        // Initialize Reveal.js Slideshow Controls
+        // Initialize Reveal.js Config with responsive sizing
         Reveal.initialize({
-          controls: true,        // Displays navigation arrows on screen
-          progress: true,        // Displays bottom progress bar
-          slideNumber: true,     // Shows current slide number
-          keyboard: true,        // Navigate using keyboard arrows
-          loop: true,            // Auto-loops back to slide 1 at the end
-          autoSlide: 5000,       // Auto-advances slides every 5 seconds (5000ms)
-          transition: 'fade'     // Smooth transition between slides
+          width: "100%",
+          height: "100%",
+          margin: 0,
+          minScale: 1,
+          maxScale: 1,
+          controls: true,
+          progress: true,
+          slideNumber: true,
+          keyboard: true,
+          loop: true,
+          autoSlide: 5000,
+          transition: 'fade'
         });
       })
       .catch(err => {
