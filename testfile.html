@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Race Results Presentation</title>
+  
+  <!-- Reveal.js Engine -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
+
+  <style>
+    /* 1. Force Reveal.js to fill 100% of the Screen Area */
+    .reveal .slides {
+      width: 100% !important;
+      height: 100% !important;
+      top: 0 !important;
+      left: 0 !important;
+      margin: 0 !important;
+      padding: 20px !important;
+      box-sizing: border-box !important;
+    }
+
+    .reveal section {
+      width: 100% !important;
+      height: 100% !important;
+      padding: 0 !important;
+    }
+
+    /* 2. 2x2 Grid fill complete slide height & width */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 20px;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    /* 3. Runner Card Base Layout */
+    .runner-card {
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      border: 3px solid #ffffff;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #1a2b4c;
+      font-family: 'Arial', sans-serif;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    /* 4. Top Badges (Rank & Bib) */
+    .card-badge-top-left {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      background: #0056b3;
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .card-badge-top-right {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a2b4c;
+      padding: 8px 16px;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    /* 5. Center Overlay Content Styling */
+    .card-name {
+      font-size: 32px;
+      font-weight: bold;
+      text-transform: uppercase;
+      text-align: center;
+      padding: 0 20px;
+      margin-bottom: 12px;
+      line-height: 1.2;
+      color: #0d1b2a;
+      text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    }
+
+    .card-details {
+      font-size: 26px;
+      font-weight: bold;
+      color: #1a2b4c;
+      margin-top: 5px;
+    }
+
+    .card-nation {
+      font-size: 20px;
+      color: #4A5568;
+      margin-top: 5px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="reveal">
+    <div class="slides" id="slides-container">
+      <section>
+        <h2>Loading Presentation Slides...</h2>
+      </section>
+    </div>
+  </div>
+
+  <!-- Reveal.js JavaScript Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+
+  <script>
+    // Live RACE RESULT 14 JSON API endpoint
+    const API_ENDPOINT = `https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9`;
+
+    // ARRAY OF YOUR DIFFERENT BACKGROUND PHOTOS
+    const backgroundPhotos = [
+      'photo1.jpg',
+      'photo2.jpg',
+      'photo3.jpg',
+      'photo4.jpg'
+    ];
+
+    fetch(API_ENDPOINT)
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        const list = Array.isArray(data) ? data : (data.list || data.participants || data.data || []);
+
+        if (list.length === 0) {
+          document.getElementById('slides-container').innerHTML = "<section><h2>No Participants Found</h2></section>";
+          return;
+        }
+
+        let slidesHTML = "";
+
+        // Chunk dataset into groups of 4 cards per slide
+        for (let i = 0; i < list.length; i += 4) {
+          const group = list.slice(i, i + 4);
+          
+          slidesHTML += `<section><div class="results-grid">`;
+
+          group.forEach((runner, idx) => {
+            const rank = runner.Rank ? `#${runner.Rank}` : "";
+            const category = runner.Category || "";
+            const bib = runner.Bib || "N/A";
+            const name = runner.Name || "Unknown Runner";
+            const time = runner.Time || "";
+            const nation = runner.Nation || "";
+
+            const bgImage = runner.Photo || backgroundPhotos[idx % backgroundPhotos.length];
+
+            slidesHTML += `
+              <div class="runner-card" style="background-image: url('${bgImage}');">
+                <div class="card-badge-top-left">${category} ${rank}</div>
+                <div class="card-badge-top-right">Bib: ${bib}</div>
+                
+                <div class="card-name">${name}</div>
+                <div class="card-details">${time ? "Time: " + time : ""}</div>
+                <div class="card-nation">${nation ? "(" + nation + ")" : ""}</div>
+              </div>
+            `;
+          });
+
+          slidesHTML += `</div></section>`;
+        }
+
+        // Insert generated slides into DOM
+        document.getElementById('slides-container').innerHTML = slidesHTML;
+
+        // Initialize Reveal.js Config with Fancy Transition Effect
+        Reveal.initialize({
+          width: "100%",
+          height: "100%",
+          margin: 0,
+          minScale: 1,
+          maxScale: 1,
+          controls: true,
+          progress: true,
+          slideNumber: true,
+          keyboard: true,
+          loop: true,
+          autoSlide: 5000,
+          
+          // Fancier 3D Transition Settings
+          transition: 'convex',        // Options: 'convex', 'concave', 'zoom', 'flip', 'spin', 'slide'
+          transitionSpeed: 'slow'       // Options: 'default', 'fast', 'slow'
+        });
+      })
+      .catch(err => {
+        console.error("API Error:", err);
+        document.getElementById('slides-container').innerHTML = "<section><h2>Error Loading Presentation Data</h2></section>";
+      });
+  </script>
+</body>
+</html>
