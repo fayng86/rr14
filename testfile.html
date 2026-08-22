@@ -219,7 +219,7 @@
             const nation = runner.Nation || runner[5] || "";
 
             // Find the photo URL from the API response payload
-            let photoUrl = runner.Photo || runner.Picture || runner.Image || runner[6];
+            let photoUrl = runner.Profile || runner.Picture || runner.Image || runner[6];
 
             if (typeof runner === 'object' && !photoUrl) {
               const possibleUrl = Object.values(runner).find(val => 
