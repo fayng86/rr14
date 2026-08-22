@@ -63,7 +63,7 @@
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.45);
+      background: rgba(0, 0, 0, 0.55);
       z-index: 1;
     }
 
@@ -80,19 +80,36 @@
       box-sizing: border-box;
     }
 
-    /* 4. Runner Profile Photo Element from API */
+    /* 4. Runner Profile Avatar / Initials Badge */
     .runner-avatar-container {
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
 
     .runner-avatar {
-      width: 120px;
-      height: 120px;
+      width: 110px;
+      height: 110px;
       border-radius: 50%;
       object-fit: cover;
-      border: 4px solid #ffffff;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      border: 3px solid #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
       background-color: #1a2b4c;
+    }
+
+    .runner-initials {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      border: 3px solid #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      background-color: #0056b3;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 38px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-transform: uppercase;
     }
 
     /* 5. Top Badges (Rank & Bib) */
@@ -126,29 +143,29 @@
 
     /* 6. Text Overlay Content Styling */
     .card-name {
-      font-size: 30px;
+      font-size: 28px;
       font-weight: bold;
       text-transform: uppercase;
       text-align: center;
       padding: 0 10px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       line-height: 1.2;
       color: #ffffff;
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
     }
 
     .card-details {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: bold;
       color: #f1f1f1;
-      margin-top: 4px;
+      margin-top: 2px;
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
     }
 
     .card-nation {
       font-size: 18px;
       color: #e0e0e0;
-      margin-top: 4px;
+      margin-top: 2px;
       font-weight: bold;
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
     }
@@ -170,7 +187,6 @@
   <script>
     const API_ENDPOINT = `https://api.raceresult.com/408916/37CEIHUXMPSYO2U5STLV68IJOVUENA1K`;
 
-    // Array of your presentation background graphics
     const backgroundPhotos = [
       'photo1.jpg',
       'photo2.jpg',
@@ -178,8 +194,21 @@
       'photo4.jpg'
     ];
 
-    // Placeholder image if a runner doesn't have a photo in the API
-    const DEFAULT_AVATAR = `https://via.placeholder.com/150/1a2b4c/FFFFFF?text=Runner`;
+    // Extract clean image URL from RACE RESULT BBCode format: [img:URL|height:60px]
+    function parseImageUrl(str) {
+      if (!str || typeof str !== 'string') return null;
+      const match = str.match(/https?:\/\/[^\s|\]]+/i);
+      return match ? match[0] : null;
+    }
+
+    // Generate Initials (e.g. "Descr Ing" -> "DI")
+    function getInitials(name) {
+      if (!name || typeof name !== 'string') return 'RR';
+      const words = name.trim().split(/\s+/).filter(w => w.length > 0);
+      if (words.length === 0) return 'RR';
+      if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+    }
 
     fetch(API_ENDPOINT)
       .then(response => {
@@ -190,7 +219,7 @@
         let rows = [];
         let fieldIndexes = {};
 
-        // 1. Handle RACE RESULT JSON structures (2D arrays with 'Fields' headers or Object arrays)
+        // 1. Handle RACE RESULT 2D Array / JSON Object Formats
         if (data && data.Fields && Array.isArray(data.Data)) {
           rows = data.Data;
           data.Fields.forEach((field, index) => {
@@ -209,7 +238,6 @@
 
         let slidesHTML = "";
 
-        // Dynamic extraction helper function
         const getVal = (row, fieldNames, fallbackIdx) => {
           if (Array.isArray(row)) {
             for (let name of fieldNames) {
@@ -225,7 +253,7 @@
           return "";
         };
 
-        // 2. Chunk dataset into groups of 4 cards per slide
+        // 2. Build 2x2 Slide Grids
         for (let i = 0; i < rows.length; i += 4) {
           const group = rows.slice(i, i + 4);
           slidesHTML += `<section><div class="results-grid">`;
@@ -239,20 +267,29 @@
             const time = getVal(runner, ['Time', 'FinishTime'], 4);
             const nation = getVal(runner, ['Nation', 'Country'], 5);
 
-            // Extract photo URL
-            let photoUrl = getVal(runner, ['Photo', 'Picture', 'Image', 'Profile', 'PhotoUrl'], 6);
+            // Extract profile image from raw string or object key
+            const rawPhoto = getVal(runner, ['Profile', 'Photo', 'Picture', 'Image', 'PhotoUrl'], 6);
+            let photoUrl = parseImageUrl(rawPhoto);
 
-            // Fallback: search array values for any string matching HTTP/HTTPS
+            // Deep scan fallback if BBCode was inside another property
             if (!photoUrl) {
-              const searchArray = Array.isArray(runner) ? runner : Object.values(runner);
-              const foundUrl = searchArray.find(val => 
-                typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))
-              );
-              if (foundUrl) photoUrl = foundUrl;
+              const searchValues = Array.isArray(runner) ? runner : Object.values(runner);
+              for (let val of searchValues) {
+                const extracted = parseImageUrl(val);
+                if (extracted) {
+                  photoUrl = extracted;
+                  break;
+                }
+              }
             }
 
-            const avatarSrc = (photoUrl && photoUrl.trim() !== "") ? photoUrl : DEFAULT_AVATAR;
+            const initials = getInitials(name);
             const bgImage = backgroundPhotos[idx % backgroundPhotos.length];
+
+            // Render <img> tag if photo exists, else render Initials Badge
+            const avatarHTML = photoUrl 
+              ? `<img class="runner-avatar" src="${photoUrl}" alt="${name}" onerror="this.onerror=null; this.outerHTML='<div class=\\'runner-initials\\'>${initials}</div>';" />`
+              : `<div class="runner-initials">${initials}</div>`;
 
             slidesHTML += `
               <div class="runner-card" style="background-image: url('${bgImage}');">
@@ -261,7 +298,7 @@
                 
                 <div class="card-content-wrapper">
                   <div class="runner-avatar-container">
-                    <img class="runner-avatar" src="${avatarSrc}" alt="${name}" onerror="this.onerror=null; this.src='${DEFAULT_AVATAR}';" />
+                    ${avatarHTML}
                   </div>
                   <div class="card-name">${name}</div>
                   <div class="card-details">${time ? "Time: " + time : ""}</div>
@@ -276,7 +313,7 @@
 
         document.getElementById('slides-container').innerHTML = slidesHTML;
 
-        // Initialize Reveal.js Configuration
+        // Initialize Reveal.js
         Reveal.initialize({
           width: "100%",
           height: "100%",
