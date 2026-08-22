@@ -49,12 +49,33 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      color: #1a2b4c;
+      color: #ffffff;
       font-family: 'Arial', sans-serif;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
       width: 100%;
       height: 100%;
       box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    /* Overlay shade to ensure text remains readable over photos */
+    .runner-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 1;
+    }
+
+    .card-content-wrapper {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
     }
 
     /* 4. Top Badges (Rank & Bib) */
@@ -69,6 +90,7 @@
       padding: 8px 16px;
       border-radius: 6px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 3;
     }
 
     .card-badge-top-right {
@@ -82,6 +104,7 @@
       padding: 8px 16px;
       border-radius: 6px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 3;
     }
 
     /* 5. Center Overlay Content Styling */
@@ -93,22 +116,24 @@
       padding: 0 20px;
       margin-bottom: 12px;
       line-height: 1.2;
-      color: #0d1b2a;
-      text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     }
 
     .card-details {
       font-size: 26px;
       font-weight: bold;
-      color: #1a2b4c;
+      color: #f1f1f1;
       margin-top: 5px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     }
 
     .card-nation {
       font-size: 20px;
-      color: #4A5568;
+      color: #e0e0e0;
       margin-top: 5px;
       font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     }
   </style>
 </head>
@@ -126,10 +151,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
 
   <script>
-    // Live RACE RESULT 14 JSON API endpoint
-    const API_ENDPOINT = `https://api.raceresult.com/408916/Q5MLR692SSQQMQWPYCMY43PEDXUZ72Q9`;
+    // New API Endpoint
+    const API_ENDPOINT = `https://api.raceresult.com/408916/37CEIHUXMPSYO2U5STLV68IJOVUENA1K`;
 
-    // ARRAY OF YOUR DIFFERENT BACKGROUND PHOTOS
+    // Fallback images if an entry does not have a photo
     const backgroundPhotos = [
       'photo1.jpg',
       'photo2.jpg',
@@ -143,9 +168,20 @@
         return response.json();
       })
       .then(data => {
-        const list = Array.isArray(data) ? data : (data.list || data.participants || data.data || []);
+        // Extract array depending on RACE RESULT API format structure (Array vs Object list)
+        let list = [];
+        if (Array.isArray(data)) {
+          list = data;
+        } else if (data.data) {
+          // If returned as object with subfields
+          const keys = Object.keys(data.data);
+          list = keys.map(k => data.data[k]);
+        } else if (typeof data === 'object') {
+          // Handle standard indexed objects
+          list = Object.values(data)[0] || [];
+        }
 
-        if (list.length === 0) {
+        if (!list || list.length === 0) {
           document.getElementById('slides-container').innerHTML = "<section><h2>No Participants Found</h2></section>";
           return;
         }
@@ -159,23 +195,38 @@
           slidesHTML += `<section><div class="results-grid">`;
 
           group.forEach((runner, idx) => {
-            const rank = runner.Rank ? `#${runner.Rank}` : "";
-            const category = runner.Category || "";
-            const bib = runner.Bib || "N/A";
-            const name = runner.Name || "Unknown Runner";
-            const time = runner.Time || "";
-            const nation = runner.Nation || "";
+            // Support both named properties and positional array items from API
+            const rank = runner.Rank || runner[0] ? `#${runner.Rank || runner[0]}` : "";
+            const category = runner.Category || runner[1] || "";
+            const bib = runner.Bib || runner[2] || "N/A";
+            const name = runner.Name || runner[3] || "Unknown Runner";
+            const time = runner.Time || runner[4] || "";
+            const nation = runner.Nation || runner[5] || "";
 
-            const bgImage = runner.Photo || backgroundPhotos[idx % backgroundPhotos.length];
+            // Extract Photo field (or search object values for a valid image URL)
+            let photoUrl = runner.Photo || runner.Picture || runner.Image || runner[6];
+
+            // Validate and parse the image URL
+            if (typeof runner === 'object' && !photoUrl) {
+              const possibleUrl = Object.values(runner).find(val => 
+                typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))
+              );
+              if (possibleUrl) photoUrl = possibleUrl;
+            }
+
+            // Fallback if no photo is available in API payload
+            const bgImage = (photoUrl && photoUrl !== "") ? photoUrl : backgroundPhotos[idx % backgroundPhotos.length];
 
             slidesHTML += `
               <div class="runner-card" style="background-image: url('${bgImage}');">
                 <div class="card-badge-top-left">${category} ${rank}</div>
                 <div class="card-badge-top-right">Bib: ${bib}</div>
                 
-                <div class="card-name">${name}</div>
-                <div class="card-details">${time ? "Time: " + time : ""}</div>
-                <div class="card-nation">${nation ? "(" + nation + ")" : ""}</div>
+                <div class="card-content-wrapper">
+                  <div class="card-name">${name}</div>
+                  <div class="card-details">${time ? "Time: " + time : ""}</div>
+                  <div class="card-nation">${nation ? "(" + nation + ")" : ""}</div>
+                </div>
               </div>
             `;
           });
@@ -186,7 +237,7 @@
         // Insert generated slides into DOM
         document.getElementById('slides-container').innerHTML = slidesHTML;
 
-        // Initialize Reveal.js Config with Fancy Transition Effect
+        // Initialize Reveal.js Configuration
         Reveal.initialize({
           width: "100%",
           height: "100%",
@@ -199,10 +250,8 @@
           keyboard: true,
           loop: true,
           autoSlide: 5000,
-          
-          // Fancier 3D Transition Settings
-          transition: 'convex',        // Options: 'convex', 'concave', 'zoom', 'flip', 'spin', 'slide'
-          transitionSpeed: 'slow'       // Options: 'default', 'fast', 'slow'
+          transition: 'convex',
+          transitionSpeed: 'slow'
         });
       })
       .catch(err => {
