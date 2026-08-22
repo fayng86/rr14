@@ -37,7 +37,7 @@
       box-sizing: border-box;
     }
 
-    /* 3. Runner Card Base Layout */
+    /* 3. Runner Card Base Layout (Background Image Stays Here) */
     .runner-card {
       position: relative;
       background-size: cover;
@@ -58,12 +58,12 @@
       overflow: hidden;
     }
 
-    /* Overlay shade to ensure text remains readable over photos */
+    /* Overlay shade to ensure text and runner photo pop */
     .runner-card::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.35);
+      background: rgba(0, 0, 0, 0.45);
       z-index: 1;
     }
 
@@ -76,9 +76,26 @@
       justify-content: center;
       width: 100%;
       height: 100%;
+      padding: 10px;
+      box-sizing: border-box;
     }
 
-    /* 4. Top Badges (Rank & Bib) */
+    /* 4. Runner Profile Photo Element from API */
+    .runner-avatar-container {
+      margin-bottom: 15px;
+    }
+
+    .runner-avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      background-color: #1a2b4c;
+    }
+
+    /* 5. Top Badges (Rank & Bib) */
     .card-badge-top-left {
       position: absolute;
       top: 20px;
@@ -89,7 +106,7 @@
       color: #ffffff;
       padding: 8px 16px;
       border-radius: 6px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
       z-index: 3;
     }
 
@@ -103,37 +120,37 @@
       color: #1a2b4c;
       padding: 8px 16px;
       border-radius: 6px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
       z-index: 3;
     }
 
-    /* 5. Center Overlay Content Styling */
+    /* 6. Text Overlay Content Styling */
     .card-name {
-      font-size: 32px;
+      font-size: 30px;
       font-weight: bold;
       text-transform: uppercase;
       text-align: center;
-      padding: 0 20px;
-      margin-bottom: 12px;
+      padding: 0 10px;
+      margin-bottom: 8px;
       line-height: 1.2;
       color: #ffffff;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.9);
     }
 
     .card-details {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: bold;
       color: #f1f1f1;
-      margin-top: 5px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      margin-top: 4px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.9);
     }
 
     .card-nation {
-      font-size: 20px;
+      font-size: 18px;
       color: #e0e0e0;
-      margin-top: 5px;
+      margin-top: 4px;
       font-weight: bold;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.9);
     }
   </style>
 </head>
@@ -151,10 +168,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
 
   <script>
-    // New API Endpoint
     const API_ENDPOINT = `https://api.raceresult.com/408916/37CEIHUXMPSYO2U5STLV68IJOVUENA1K`;
 
-    // Fallback images if an entry does not have a photo
+    // Array of your presentation background graphics
     const backgroundPhotos = [
       'photo1.jpg',
       'photo2.jpg',
@@ -162,22 +178,22 @@
       'photo4.jpg'
     ];
 
+    // Placeholder image if a runner doesn't have a photo in the API
+    const DEFAULT_AVATAR = `https://via.placeholder.com/150/1a2b4c/FFFFFF?text=Runner`;
+
     fetch(API_ENDPOINT)
       .then(response => {
         if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
         return response.json();
       })
       .then(data => {
-        // Extract array depending on RACE RESULT API format structure (Array vs Object list)
         let list = [];
         if (Array.isArray(data)) {
           list = data;
         } else if (data.data) {
-          // If returned as object with subfields
           const keys = Object.keys(data.data);
           list = keys.map(k => data.data[k]);
         } else if (typeof data === 'object') {
-          // Handle standard indexed objects
           list = Object.values(data)[0] || [];
         }
 
@@ -188,25 +204,23 @@
 
         let slidesHTML = "";
 
-        // Chunk dataset into groups of 4 cards per slide
+        // Group dataset into 4 cards per slide
         for (let i = 0; i < list.length; i += 4) {
           const group = list.slice(i, i + 4);
           
           slidesHTML += `<section><div class="results-grid">`;
 
           group.forEach((runner, idx) => {
-            // Support both named properties and positional array items from API
-            const rank = runner.Rank || runner[0] ? `#${runner.Rank || runner[0]}` : "";
+            const rank = runner.Rank || (runner[0] ? `#${runner[0]}` : "");
             const category = runner.Category || runner[1] || "";
             const bib = runner.Bib || runner[2] || "N/A";
             const name = runner.Name || runner[3] || "Unknown Runner";
             const time = runner.Time || runner[4] || "";
             const nation = runner.Nation || runner[5] || "";
 
-            // Extract Photo field (or search object values for a valid image URL)
+            // Find the photo URL from the API response payload
             let photoUrl = runner.Photo || runner.Picture || runner.Image || runner[6];
 
-            // Validate and parse the image URL
             if (typeof runner === 'object' && !photoUrl) {
               const possibleUrl = Object.values(runner).find(val => 
                 typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))
@@ -214,8 +228,8 @@
               if (possibleUrl) photoUrl = possibleUrl;
             }
 
-            // Fallback if no photo is available in API payload
-            const bgImage = (photoUrl && photoUrl !== "") ? photoUrl : backgroundPhotos[idx % backgroundPhotos.length];
+            const avatarSrc = (photoUrl && photoUrl !== "") ? photoUrl : DEFAULT_AVATAR;
+            const bgImage = backgroundPhotos[idx % backgroundPhotos.length];
 
             slidesHTML += `
               <div class="runner-card" style="background-image: url('${bgImage}');">
@@ -223,6 +237,9 @@
                 <div class="card-badge-top-right">Bib: ${bib}</div>
                 
                 <div class="card-content-wrapper">
+                  <div class="runner-avatar-container">
+                    <img class="runner-avatar" src="${avatarSrc}" alt="${name}" onerror="this.src='${DEFAULT_AVATAR}';" />
+                  </div>
                   <div class="card-name">${name}</div>
                   <div class="card-details">${time ? "Time: " + time : ""}</div>
                   <div class="card-nation">${nation ? "(" + nation + ")" : ""}</div>
@@ -234,10 +251,9 @@
           slidesHTML += `</div></section>`;
         }
 
-        // Insert generated slides into DOM
         document.getElementById('slides-container').innerHTML = slidesHTML;
 
-        // Initialize Reveal.js Configuration
+        // Initialize Reveal.js
         Reveal.initialize({
           width: "100%",
           height: "100%",
