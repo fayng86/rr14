@@ -187,48 +187,71 @@
         return response.json();
       })
       .then(data => {
-        let list = [];
-        if (Array.isArray(data)) {
-          list = data;
-        } else if (data.data) {
-          const keys = Object.keys(data.data);
-          list = keys.map(k => data.data[k]);
-        } else if (typeof data === 'object') {
-          list = Object.values(data)[0] || [];
+        let rows = [];
+        let fieldIndexes = {};
+
+        // 1. Handle RACE RESULT JSON structures (2D arrays with 'Fields' headers or Object arrays)
+        if (data && data.Fields && Array.isArray(data.Data)) {
+          rows = data.Data;
+          data.Fields.forEach((field, index) => {
+            fieldIndexes[field.toLowerCase()] = index;
+          });
+        } else if (Array.isArray(data)) {
+          rows = data;
+        } else if (data && typeof data === 'object') {
+          rows = data.data ? Object.values(data.data) : Object.values(data)[0] || [];
         }
 
-        if (!list || list.length === 0) {
+        if (!rows || rows.length === 0) {
           document.getElementById('slides-container').innerHTML = "<section><h2>No Participants Found</h2></section>";
           return;
         }
 
         let slidesHTML = "";
 
-        // Group dataset into 4 cards per slide
-        for (let i = 0; i < list.length; i += 4) {
-          const group = list.slice(i, i + 4);
-          
+        // Dynamic extraction helper function
+        const getVal = (row, fieldNames, fallbackIdx) => {
+          if (Array.isArray(row)) {
+            for (let name of fieldNames) {
+              const idx = fieldIndexes[name.toLowerCase()];
+              if (idx !== undefined && row[idx] !== undefined) return row[idx];
+            }
+            return row[fallbackIdx] !== undefined ? row[fallbackIdx] : "";
+          } else if (typeof row === 'object') {
+            for (let name of fieldNames) {
+              if (row[name]) return row[name];
+            }
+          }
+          return "";
+        };
+
+        // 2. Chunk dataset into groups of 4 cards per slide
+        for (let i = 0; i < rows.length; i += 4) {
+          const group = rows.slice(i, i + 4);
           slidesHTML += `<section><div class="results-grid">`;
 
           group.forEach((runner, idx) => {
-            const rank = runner.Rank || (runner[0] ? `#${runner[0]}` : "");
-            const category = runner.Category || runner[1] || "";
-            const bib = runner.Bib || runner[2] || "N/A";
-            const name = runner.Name || runner[3] || "Unknown Runner";
-            const time = runner.Time || runner[4] || "";
-            const nation = runner.Nation || runner[5] || "";
+            const rankVal = getVal(runner, ['Rank', 'Position'], 0);
+            const rank = rankVal ? `#${rankVal}` : "";
+            const category = getVal(runner, ['Category', 'Contest'], 1);
+            const bib = getVal(runner, ['Bib', 'BibNo', 'RaceNr'], 2) || "N/A";
+            const name = getVal(runner, ['Name', 'FullName'], 3) || "Unknown Runner";
+            const time = getVal(runner, ['Time', 'FinishTime'], 4);
+            const nation = getVal(runner, ['Nation', 'Country'], 5);
 
-            // Find the photo URL from the API response payload
-            let photoUrl = runner.Profile || runner.Picture || runner.Image || runner[6];
+            // Extract photo URL
+            let photoUrl = getVal(runner, ['Photo', 'Picture', 'Image', 'Profile', 'PhotoUrl'], 6);
 
-            if (typeof runner === 'object' && !photoUrl) {
-              const possibleUrl = Object.values(runner).find(val => 
+            // Fallback: search array values for any string matching HTTP/HTTPS
+            if (!photoUrl) {
+              const searchArray = Array.isArray(runner) ? runner : Object.values(runner);
+              const foundUrl = searchArray.find(val => 
                 typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))
               );
-              if (possibleUrl) photoUrl = possibleUrl;
+              if (foundUrl) photoUrl = foundUrl;
             }
 
-            const avatarSrc = (photoUrl && photoUrl !== "") ? photoUrl : DEFAULT_AVATAR;
+            const avatarSrc = (photoUrl && photoUrl.trim() !== "") ? photoUrl : DEFAULT_AVATAR;
             const bgImage = backgroundPhotos[idx % backgroundPhotos.length];
 
             slidesHTML += `
@@ -238,7 +261,7 @@
                 
                 <div class="card-content-wrapper">
                   <div class="runner-avatar-container">
-                    <img class="runner-avatar" src="${avatarSrc}" alt="${name}" onerror="this.src='${DEFAULT_AVATAR}';" />
+                    <img class="runner-avatar" src="${avatarSrc}" alt="${name}" onerror="this.onerror=null; this.src='${DEFAULT_AVATAR}';" />
                   </div>
                   <div class="card-name">${name}</div>
                   <div class="card-details">${time ? "Time: " + time : ""}</div>
@@ -253,7 +276,7 @@
 
         document.getElementById('slides-container').innerHTML = slidesHTML;
 
-        // Initialize Reveal.js
+        // Initialize Reveal.js Configuration
         Reveal.initialize({
           width: "100%",
           height: "100%",
