@@ -1,675 +1,879 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RaceResult Grandslam Qualifier Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrandSlam Grandmaster Tracker & Race Data Aggregator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .bg-gold-gradient {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+        }
+        .badge-grandmaster {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-  <!-- Header / Navigation -->
-  <header class="bg-slate-900 text-white shadow-md border-b border-slate-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="p-2.5 bg-amber-500 text-slate-950 rounded-xl font-bold shadow-lg shadow-amber-500/20">
-          <i class="fa-solid fa-trophy text-2xl"></i>
-        </div>
-        <div>
-          <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight">Grandslam Qualifier Dashboard</h1>
-          <p class="text-xs sm:text-sm text-slate-400">Cross-referencing RaceResult APIs across 4 consecutive rounds</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-3">
-        <button id="btnFetchAll" onclick="startDataFetch()" class="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold px-5 py-2.5 rounded-xl transition duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm">
-          <i class="fa-solid fa-rotate" id="syncIcon"></i>
-          <span>Fetch All Race Data</span>
-        </button>
-        <button id="btnExportCSV" onclick="exportGrandslamCSV()" disabled class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium px-4 py-2.5 rounded-xl transition duration-200 text-sm border border-slate-700">
-          <i class="fa-solid fa-file-csv text-emerald-400"></i>
-          <span>Export CSV</span>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- Main Content Container -->
-  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-
-    <!-- Proxy / CORS Notice Banner -->
-    <div id="corsNotice" class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-900 flex items-start gap-3 relative">
-      <i class="fa-solid fa-triangle-exclamation text-amber-600 text-lg mt-0.5"></i>
-      <div class="text-xs sm:text-sm leading-relaxed pr-6">
-        <span class="font-semibold">CORS Proxy Integration Enabled:</span> If direct browser requests to RaceResult API fail due to CORS cross-origin headers, requests automatically route via a CORS proxy (`corsproxy.io`). Sample simulated fallback data is available if APIs are offline.
-      </div>
-      <button onclick="document.getElementById('corsNotice').remove()" class="absolute top-3 right-3 text-amber-700 hover:text-amber-900">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-
-    <!-- Progress & Loading State -->
-    <div id="fetchProgressContainer" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-4">
-      <div class="flex justify-between items-center text-sm font-semibold text-slate-700">
-        <span id="fetchProgressStatus" class="flex items-center gap-2">
-          <i class="fa-solid fa-circle-notch fa-spin text-amber-500"></i> Initializing multi-API sync...
-        </span>
-        <span id="fetchProgressPercent" class="text-amber-600 font-bold">0%</span>
-      </div>
-      <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-        <div id="fetchProgressBar" class="bg-gradient-to-r from-amber-500 to-amber-600 h-full w-0 transition-all duration-300 rounded-full"></div>
-      </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 text-xs">
-        <div id="round1StatusBadge" class="p-2 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-between">
-          <span>R1: Round 1</span> <i class="fa-regular fa-clock"></i>
-        </div>
-        <div id="round2StatusBadge" class="p-2 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-between">
-          <span>R2: Round 2</span> <i class="fa-regular fa-clock"></i>
-        </div>
-        <div id="round3StatusBadge" class="p-2 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-between">
-          <span>R3: Round 3</span> <i class="fa-regular fa-clock"></i>
-        </div>
-        <div id="round4StatusBadge" class="p-2 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-between">
-          <span>R4: Final Round</span> <i class="fa-regular fa-clock"></i>
-        </div>
-      </div>
-    </div>
-
-    <!-- Dashboard Metrics Cards -->
-    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-        <div class="p-3.5 bg-blue-50 text-blue-600 rounded-xl text-xl">
-          <i class="fa-solid fa-users"></i>
-        </div>
-        <div>
-          <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Total Participants</p>
-          <p id="statTotal" class="text-2xl font-black text-slate-800">0</p>
-        </div>
-      </div>
-
-      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-        <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl text-xl">
-          <i class="fa-solid fa-crown"></i>
-        </div>
-        <div>
-          <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Grandslam Qualified</p>
-          <p id="statGrandslam" class="text-2xl font-black text-emerald-600">0</p>
-        </div>
-      </div>
-
-      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-        <div class="p-3.5 bg-amber-50 text-amber-600 rounded-xl text-xl">
-          <i class="fa-solid fa-person-running"></i>
-        </div>
-        <div>
-          <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Partial (1-3 Rounds)</p>
-          <p id="statPartial" class="text-2xl font-black text-amber-600">0</p>
-        </div>
-      </div>
-
-      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-        <div class="p-3.5 bg-slate-100 text-slate-600 rounded-xl text-xl">
-          <i class="fa-solid fa-circle-xmark"></i>
-        </div>
-        <div>
-          <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Single Round Only</p>
-          <p id="statSingle" class="text-2xl font-black text-slate-700">0</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Individual Lookup Tool Card -->
-    <section class="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-xl border border-slate-700 space-y-4">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
-        <div>
-          <h2 class="text-lg font-bold flex items-center gap-2 text-amber-400">
-            <i class="fa-solid fa-magnifying-glass"></i> Instant Individual Grandslam Lookup (IC-Based)
-          </h2>
-          <p class="text-xs text-slate-300">Enter your IC / Identity Card Number or Full Name to check qualification status across all 4 rounds.</p>
-        </div>
-      </div>
-
-      <div class="flex flex-col sm:flex-row gap-3">
-        <div class="relative flex-grow">
-          <i class="fa-solid fa-id-card absolute left-3.5 top-3.5 text-slate-400"></i>
-          <input type="text" id="individualLookupInput" placeholder="Enter IC Number (e.g. 920815105432) or Full Name..." 
-                 class="w-full bg-slate-800/90 text-white placeholder-slate-400 pl-10 pr-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
-        </div>
-        <button onclick="performIndividualLookup()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-md">
-          <i class="fa-solid fa-search"></i> Check Status
-        </button>
-      </div>
-
-      <div id="individualLookupResult" class="hidden bg-slate-800/80 rounded-xl p-4 border border-slate-700 text-sm space-y-3">
-        <!-- JS dynamically fills this -->
-      </div>
-    </section>
-
-    <!-- Main Results Filter & Table Section -->
-    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden flex flex-col">
-      <div class="p-5 border-b border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
-        <div class="relative w-full md:w-80">
-          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
-          <input type="text" id="tableSearchInput" oninput="applyFilters()" placeholder="Filter table by IC or Name..." 
-                 class="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Filter:</span>
-          <button onclick="setFilter('ALL')" id="filterBtnALL" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 shadow-sm">All Participants</button>
-          <button onclick="setFilter('QUALIFIED')" id="filterBtnQUALIFIED" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300">🎉 Grandslam Only</button>
-          <button onclick="setFilter('PARTIAL')" id="filterBtnPARTIAL" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300">⚠️ Missing 1+ Rounds</button>
-        </div>
-      </div>
-
-      <div class="overflow-x-auto custom-scrollbar">
-        <table class="w-full text-left text-sm border-collapse">
-          <thead>
-            <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-semibold text-xs uppercase tracking-wider">
-              <th class="py-3.5 px-4">IC / ID Number</th>
-              <th class="py-3.5 px-4">Participant Name</th>
-              <th class="py-3.5 px-4">Bib</th>
-              <th class="py-3.5 px-4">Contest / Gender</th>
-              <th class="py-3.5 px-4 text-center">Grandslam Status</th>
-              <th class="py-3.5 px-4 text-center">R1 Results</th>
-              <th class="py-3.5 px-4 text-center">R2 Results</th>
-              <th class="py-3.5 px-4 text-center">R3 Results</th>
-              <th class="py-3.5 px-4 text-center">R4 Results</th>
-            </tr>
-          </thead>
-          <tbody id="resultsTableBody" class="divide-y divide-slate-100 text-slate-700">
-            <tr>
-              <td colspan="9" class="py-12 text-center text-slate-400">
-                <i class="fa-solid fa-cloud-arrow-down text-3xl mb-2 text-slate-300 block"></i>
-                No data loaded yet. Click <strong>"Fetch All Race Data"</strong> above to load and cross-reference results.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <span id="tableCountInfo">Showing 0 entries</span>
-        <span>Cross-checked primarily using IC across all 4 API endpoints</span>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Footer -->
-  <footer class="bg-slate-900 text-slate-400 text-xs py-6 border-t border-slate-800 mt-auto">
-    <div class="max-w-7xl mx-auto px-4 text-center space-y-1">
-      <p>RaceResult Grandslam Qualifier Verification Tool</p>
-      <p class="text-slate-500">Cross-referencing endpoints: 378696 • 408916 • 407616 • 420706</p>
-    </div>
-  </footer>
-
-  <!-- Application Logic JS -->
-  <script>
-    const API_ENDPOINTS = [
-      { id: 1, name: "Round 1", code: "378696", url: "https://api.raceresult.com/378696/YF3SEKI5X6LFAYERUCR573P04EG7M6F6" },
-      { id: 2, name: "Round 2", code: "408916", url: "https://api.raceresult.com/408916/JX71HI9I3Q47WTSV7D7QGIKE1BAPXGC3" },
-      { id: 3, name: "Round 3", code: "407616", url: "https://api.raceresult.com/407616/NABTZLY4KF4NLJQG2NR5D00ZPXZVL4XP" },
-      { id: 4, name: "Round 4", code: "420706", url: "https://api.raceresult.com/420706/TD6M27HKSZHRE5ZHVGRC75SU7KRKP3KD" }
-    ];
-
-    let rawApiData = { 1: [], 2: [], 3: [], 4: [] };
-    let participantsMap = new Map(); 
-    let filteredList = [];
-    let currentFilter = 'ALL';
-
-    const SAMPLE_RUNNERS = [
-      { ic: "900101145231", name: "Ahmad Bin Zulkifli", bib: "A101", contest: "10KM Open", gender: "M", r: [true, true, true, true] },
-      { ic: "850312086432", name: "Tan Wei Ming", bib: "A102", contest: "21KM Veteran", gender: "M", r: [true, true, true, true] },
-      { ic: "941120105678", name: "Siti Nurhaliza Abdullah", bib: "B201", contest: "10KM Open", gender: "F", r: [true, true, true, false] },
-      { ic: "880504015993", name: "Muthusamy A/L Rajan", bib: "A103", contest: "21KM Open", gender: "M", r: [true, true, true, true] },
-      { ic: "920708123456", name: "Chong Kah Wai", bib: "C301", contest: "5KM Fun Run", gender: "M", r: [true, false, true, true] },
-      { ic: "961205036789", name: "Nur Amira Binti Hassan", bib: "B202", contest: "10KM Open", gender: "F", r: [true, true, false, false] },
-      { ic: "830419058765", name: "Lee Kok Keong", bib: "A104", contest: "21KM Veteran", gender: "M", r: [true, true, true, true] },
-      { ic: "910925146111", name: "Fariz Iskandar", bib: "A105", contest: "10KM Open", gender: "M", r: [false, true, true, true] },
-      { ic: "870214087788", name: "Subramaniam V", bib: "A106", contest: "21KM Open", gender: "M", r: [true, true, true, true] },
-      { ic: "950630109988", name: "Karen Wong Mei Ling", bib: "B203", contest: "10KM Open", gender: "F", r: [true, true, true, true] }
-    ];
-
-    function cleanStr(str) {
-      if (!str) return '';
-      return String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
-    }
-
-    function parseRaceResultJSON(data) {
-      const records = [];
-      if (!data) return records;
-      let list = Array.isArray(data) ? data : (data.data || data.list || data.Data || []);
-      if (typeof data === 'object' && !Array.isArray(data) && data.Data && Array.isArray(data.Data)) {
-        list = data.Data;
-      }
-
-      list.forEach(item => {
-        let ic = '';
-        let firstname = '';
-        let lastname = '';
-        let fullname = '';
-        let bib = '';
-        let contest = '';
-        let gender = '';
-        let result = '';
-
-        if (Array.isArray(item)) {
-          ic = item[0] || item[1] || '';
-          firstname = item[2] || '';
-          lastname = item[3] || '';
-          fullname = `${firstname} ${lastname}`.trim() || item[1] || '';
-          bib = item[4] || '';
-          contest = item[5] || 'Standard';
-          gender = item[6] || '-';
-          result = item[7] || 'Finished';
-        } else if (typeof item === 'object') {
-          ic = item.IC || item.ic || item.ID || item.id || item.NationalID || item.Bib || item.BIB || '';
-          firstname = item.Firstname || item.FirstName || item.first_name || '';
-          lastname = item.Lastname || item.LastName || item.last_name || '';
-          fullname = item.Fullname || item.Name || `${firstname} ${lastname}`.trim();
-          bib = item.Bib || item.BIB || item.BibNo || '';
-          contest = item.Contest || item.Event || item.Category || 'Standard';
-          gender = item.Gender || item.Sex || '-';
-          result = item.Result || item.Time || item.Status || 'Finished';
-        }
-
-        if (ic || fullname) {
-          records.push({
-            ic: String(ic).trim(),
-            fullname: String(fullname).trim(),
-            bib: String(bib).trim(),
-            contest: String(contest).trim(),
-            gender: String(gender).trim(),
-            result: String(result).trim(),
-            raw: item
-          });
-        }
-      });
-      return records;
-    }
-
-    async function startDataFetch() {
-      const btn = document.getElementById('btnFetchAll');
-      const syncIcon = document.getElementById('syncIcon');
-      const progressContainer = document.getElementById('fetchProgressContainer');
-      const progressBar = document.getElementById('fetchProgressBar');
-      const progressStatus = document.getElementById('fetchProgressStatus');
-      const progressPercent = document.getElementById('fetchProgressPercent');
-
-      btn.disabled = true;
-      syncIcon.classList.add('fa-spin');
-      progressContainer.classList.remove('hidden');
-
-      rawApiData = { 1: [], 2: [], 3: [], 4: [] };
-      participantsMap.clear();
-
-      let usedFallback = false;
-
-      for (let i = 0; i < API_ENDPOINTS.length; i++) {
-        const ep = API_ENDPOINTS[i];
-        const stepNum = i + 1;
-        const percent = (stepNum / 4) * 100;
-
-        progressStatus.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-amber-500"></i> Fetching ${ep.name} (${ep.code})...`;
-        progressBar.style.width = `${percent}%`;
-        progressPercent.innerText = `${Math.round(percent)}%`;
-
-        const badge = document.getElementById(`round${stepNum}StatusBadge`);
-        badge.className = "p-2 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-between font-medium";
-        badge.innerHTML = `<span>R${stepNum}: ${ep.code}</span> <i class="fa-solid fa-spinner fa-spin"></i>`;
-
-        try {
-          let response;
-          try {
-            response = await fetch(ep.url);
-          } catch (corsErr) {
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(ep.url)}`;
-            response = await fetch(proxyUrl);
-          }
-
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const json = await response.json();
-          const parsedRecords = parseRaceResultJSON(json);
-
-          if (parsedRecords.length === 0) throw new Error('Empty result format');
-
-          rawApiData[stepNum] = parsedRecords;
-          badge.className = "p-2 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-between font-medium";
-          badge.innerHTML = `<span>R${stepNum}: ${parsedRecords.length} runners</span> <i class="fa-solid fa-check text-emerald-600"></i>`;
-        } catch (err) {
-          console.warn(`API ${ep.code} direct fetch failed or restricted by CORS:`, err);
-          usedFallback = true;
-          
-          const fallbackRecords = SAMPLE_RUNNERS.filter(r => r.r[i]).map(r => ({
-            ic: r.ic,
-            fullname: r.name,
-            bib: r.bib,
-            contest: r.contest,
-            gender: r.gender,
-            result: "00:45:20",
-            raw: {}
-          }));
-
-          rawApiData[stepNum] = fallbackRecords;
-          badge.className = "p-2 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-between font-medium border border-amber-200";
-          badge.innerHTML = `<span>R${stepNum}: Sample Data</span> <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>`;
-        }
-
-        await new Promise(r => setTimeout(r, 200));
-      }
-
-      progressStatus.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Cross-referencing results via IC across all 4 rounds...`;
-      crossReferenceData();
-
-      btn.disabled = false;
-      syncIcon.classList.remove('fa-spin');
-      document.getElementById('btnExportCSV').disabled = false;
-
-      if (usedFallback) {
-        document.getElementById('corsNotice').classList.remove('hidden');
-      }
-    }
-
-    function crossReferenceData() {
-      participantsMap.clear();
-
-      for (let roundNum = 1; roundNum <= 4; roundNum++) {
-        const records = rawApiData[roundNum] || [];
-
-        records.forEach(rec => {
-          // Primary Key is strictly IC for crosschecking
-          const cleanIcKey = cleanStr(rec.ic);
-          const cleanNameKey = cleanStr(rec.fullname);
-          const primaryKey = cleanIcKey.length > 2 ? cleanIcKey : cleanNameKey;
-
-          if (!primaryKey) return;
-
-          if (!participantsMap.has(primaryKey)) {
-            participantsMap.set(primaryKey, {
-              ic: rec.ic || 'N/A',
-              fullname: rec.fullname || 'Unknown Participant',
-              bib: rec.bib || '-',
-              contest: rec.contest || '-',
-              gender: rec.gender || '-',
-              rounds: { 
-                1: { done: false, result: '-' }, 
-                2: { done: false, result: '-' }, 
-                3: { done: false, result: '-' }, 
-                4: { done: false, result: '-' } 
-              },
-              roundsCount: 0
-            });
-          }
-
-          const participant = participantsMap.get(primaryKey);
-
-          if ((!participant.ic || participant.ic === 'N/A') && rec.ic) participant.ic = rec.ic;
-          if ((!participant.bib || participant.bib === '-') && rec.bib) participant.bib = rec.bib;
-          if ((!participant.contest || participant.contest === '-') && rec.contest) participant.contest = rec.contest;
-          if ((!participant.gender || participant.gender === '-') && rec.gender) participant.gender = rec.gender;
-
-          if (!participant.rounds[roundNum].done) {
-            participant.rounds[roundNum] = { done: true, result: rec.result || 'Finished' };
-            participant.roundsCount++;
-          }
-        });
-      }
-
-      updateMetrics();
-      applyFilters();
-    }
-
-    function updateMetrics() {
-      let total = participantsMap.size;
-      let grandslam = 0;
-      let partial = 0;
-      let single = 0;
-
-      participantsMap.forEach(p => {
-        if (p.roundsCount === 4) grandslam++;
-        else if (p.roundsCount > 1) partial++;
-        else single++;
-      });
-
-      document.getElementById('statTotal').innerText = total;
-      document.getElementById('statGrandslam').innerText = grandslam;
-      document.getElementById('statPartial').innerText = partial;
-      document.getElementById('statSingle').innerText = single;
-    }
-
-    function renderTable(dataList) {
-      const tbody = document.getElementById('resultsTableBody');
-      const countInfo = document.getElementById('tableCountInfo');
-
-      countInfo.innerText = `Showing ${dataList.length} of ${participantsMap.size} participants`;
-
-      if (dataList.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="9" class="py-8 text-center text-slate-400">
-              No matching records found.
-            </td>
-          </tr>
-        `;
-        return;
-      }
-
-      tbody.innerHTML = dataList.map(p => {
-        const isGrandslam = p.roundsCount === 4;
-        
-        const statusBadge = isGrandslam
-          ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-              <i class="fa-solid fa-trophy text-amber-500"></i> 🎉 Grandslam!
-             </span>`
-          : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
-              <i class="fa-solid fa-hourglass-half text-amber-500"></i> ${p.roundsCount}/4 Rounds
-             </span>`;
-
-        const renderRoundCell = (roundObj) => {
-          if (roundObj.done) {
-            return `<div class="flex flex-col items-center">
-                      <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold mb-0.5">
-                        <i class="fa-solid fa-check"></i>
-                      </span>
-                      <span class="font-mono text-[11px] text-slate-600">${roundObj.result}</span>
-                    </div>`;
-          } else {
-            return `<div class="flex flex-col items-center">
-                      <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-400 text-xs font-semibold mb-0.5">
-                        <i class="fa-solid fa-xmark"></i>
-                      </span>
-                      <span class="text-[11px] text-slate-400">DNS/DNF</span>
-                    </div>`;
-          }
-        };
-
-        return `
-          <tr class="hover:bg-slate-50/80 transition duration-150">
-            <td class="py-3.5 px-4 font-mono text-xs font-bold text-slate-800">
-              ${p.ic}
-            </td>
-            <td class="py-3.5 px-4 font-semibold text-slate-800">
-              ${p.fullname}
-            </td>
-            <td class="py-3.5 px-4 font-mono text-xs text-slate-600">
-              ${p.bib}
-            </td>
-            <td class="py-3.5 px-4 text-xs text-slate-600">
-              <div class="font-medium text-slate-800">${p.contest}</div>
-              <div class="text-slate-400 text-[11px]">Gender: ${p.gender}</div>
-            </td>
-            <td class="py-3.5 px-4 text-center">
-              ${statusBadge}
-            </td>
-            <td class="py-3.5 px-4 text-center">${renderRoundCell(p.rounds[1])}</td>
-            <td class="py-3.5 px-4 text-center">${renderRoundCell(p.rounds[2])}</td>
-            <td class="py-3.5 px-4 text-center">${renderRoundCell(p.rounds[3])}</td>
-            <td class="py-3.5 px-4 text-center">${renderRoundCell(p.rounds[4])}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function applyFilters() {
-      const searchVal = cleanStr(document.getElementById('tableSearchInput').value);
-      const list = Array.from(participantsMap.values());
-
-      filteredList = list.filter(p => {
-        if (currentFilter === 'QUALIFIED' && p.roundsCount !== 4) return false;
-        if (currentFilter === 'PARTIAL' && p.roundsCount === 4) return false;
-
-        if (searchVal) {
-          const nameClean = cleanStr(p.fullname);
-          const icClean = cleanStr(p.ic);
-          const bibClean = cleanStr(p.bib);
-          return nameClean.includes(searchVal) || icClean.includes(searchVal) || bibClean.includes(searchVal);
-        }
-
-        return true;
-      });
-
-      renderTable(filteredList);
-    }
-
-    function setFilter(filterType) {
-      currentFilter = filterType;
-      
-      document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.className = "filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300";
-      });
-
-      const activeBtn = document.getElementById(`filterBtn${filterType}`);
-      if (activeBtn) {
-        activeBtn.className = "filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 shadow-sm";
-      }
-
-      applyFilters();
-    }
-
-    function performIndividualLookup() {
-      const query = cleanStr(document.getElementById('individualLookupInput').value);
-      const resultBox = document.getElementById('individualLookupResult');
-
-      if (!query) {
-        resultBox.classList.remove('hidden');
-        resultBox.innerHTML = `<p class="text-amber-400 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i> Please enter an IC number or Full Name to search.</p>`;
-        return;
-      }
-
-      if (participantsMap.size === 0) {
-        resultBox.classList.remove('hidden');
-        resultBox.innerHTML = `<p class="text-amber-400 font-medium"><i class="fa-solid fa-circle-info mr-1"></i> Please click "Fetch All Race Data" above first to load event records.</p>`;
-        return;
-      }
-
-      let match = null;
-      for (let [key, p] of participantsMap.entries()) {
-        if (cleanStr(p.ic) === query || cleanStr(p.fullname) === query || key === query || cleanStr(p.ic).includes(query) || cleanStr(p.fullname).includes(query)) {
-          match = p;
-          break;
-        }
-      }
-
-      resultBox.classList.remove('hidden');
-
-      if (match) {
-        const isQual = match.roundsCount === 4;
-        resultBox.innerHTML = `
-          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-700 pb-3">
-            <div>
-              <h3 class="text-base font-bold text-white">${match.fullname}</h3>
-              <p class="text-xs text-slate-400 font-mono">IC: ${match.ic} | Bib: ${match.bib} | Contest: ${match.contest} | Gender: ${match.gender}</p>
-            </div>
-            <div>
-              ${isQual 
-                ? `<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
-                    <i class="fa-solid fa-crown text-amber-400"></i> GRANDSLAM QUALIFIED!
-                   </span>`
-                : `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
-                    <i class="fa-solid fa-triangle-exclamation"></i> ${match.roundsCount}/4 Rounds Completed
-                   </span>`
-              }
-            </div>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-xs">
-            ${[1,2,3,4].map(r => `
-              <div class="p-2.5 rounded-lg ${match.rounds[r].done ? 'bg-emerald-950/60 border border-emerald-600/40 text-emerald-300' : 'bg-slate-900 border border-slate-700 text-slate-500'} flex flex-col gap-1">
-                <div class="flex items-center justify-between font-semibold">
-                  <span>Round ${r}</span>
-                  <i class="fa-solid ${match.rounds[r].done ? 'fa-check-circle text-emerald-400' : 'fa-times-circle text-slate-600'}"></i>
+    <!-- Top Header -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-slate-900 font-black text-xl shadow-md">
+                        <i class="fa-solid font-bold fa-trophy"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                            GrandSlam Grandmaster Tracker
+                            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">4-Event Series</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">RaceResult Multi-Event Aggregator & Finisher Verification</p>
+                    </div>
                 </div>
-                <div class="font-mono text-[11px] ${match.rounds[r].done ? 'text-emerald-400' : 'text-slate-500'}">Result: ${match.rounds[r].result}</div>
-              </div>
-            `).join('')}
-          </div>
-        `;
-      } else {
-        resultBox.innerHTML = `
-          <p class="text-slate-300 font-medium"><i class="fa-solid fa-magnifying-glass-minus text-slate-400 mr-1.5"></i> No record found matching "<strong>${document.getElementById('individualLookupInput').value}</strong>".</p>
-        `;
-      }
-    }
 
-    function exportGrandslamCSV() {
-      const qualifiers = Array.from(participantsMap.values()).filter(p => p.roundsCount === 4);
+                <!-- Action Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btnFetchAll" onclick="fetchAllData()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-sm rounded-lg shadow-md transition flex items-center gap-2">
+                        <i class="fa-solid fa-rotate" id="refreshIcon"></i>
+                        <span>Fetch API Data</span>
+                    </button>
+                    <button onclick="openManualPasteModal()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-sm rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-code"></i>
+                        <span>Manual JSON Paste</span>
+                    </button>
+                    <button onclick="exportToCSV()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-lg shadow transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-csv"></i>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
 
-      if (qualifiers.length === 0) {
-        alert("No Grandslam qualifiers available to export.");
-        return;
-      }
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-      let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += "IC Number,Full Name,Bib,Contest,Gender,Round 1 Result,Round 2 Result,Round 3 Result,Round 4 Result,Status\n";
+        <!-- API Endpoint Status Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Event 1 -->
+            <div id="card-event-0" class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 transition hover:shadow-md">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Event #1</span>
+                    <span id="status-badge-0" class="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Idle
+                    </span>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 truncate" id="title-event-0">Race 378696</h3>
+                <div class="mt-2 flex justify-between items-baseline">
+                    <span class="text-2xl font-bold text-slate-900" id="count-event-0">0</span>
+                    <span class="text-xs text-slate-500">participants</span>
+                </div>
+                <div class="mt-2 text-xs text-slate-400 truncate font-mono" title="https://api.raceresult.com/378696/YF3SEKI5X6LFAYERUCR573P04EG7M6F6">
+                    ID: 378696
+                </div>
+            </div>
 
-      qualifiers.forEach(p => {
-        const row = [
-          `"${p.ic}"`,
-          `"${p.fullname}"`,
-          `"${p.bib}"`,
-          `"${p.contest}"`,
-          `"${p.gender}"`,
-          `"${p.rounds[1].result}"`,
-          `"${p.rounds[2].result}"`,
-          `"${p.rounds[3].result}"`,
-          `"${p.rounds[4].result}"`,
-          "Verified Grandslam Qualifier"
+            <!-- Event 2 -->
+            <div id="card-event-1" class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 transition hover:shadow-md">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Event #2</span>
+                    <span id="status-badge-1" class="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Idle
+                    </span>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 truncate" id="title-event-1">Race 408916</h3>
+                <div class="mt-2 flex justify-between items-baseline">
+                    <span class="text-2xl font-bold text-slate-900" id="count-event-1">0</span>
+                    <span class="text-xs text-slate-500">participants</span>
+                </div>
+                <div class="mt-2 text-xs text-slate-400 truncate font-mono" title="https://api.raceresult.com/408916/JX71HI9I3Q47WTSV7D7QGIKE1BAPXGC3">
+                    ID: 408916
+                </div>
+            </div>
+
+            <!-- Event 3 -->
+            <div id="card-event-2" class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 transition hover:shadow-md">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Event #3</span>
+                    <span id="status-badge-2" class="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Idle
+                    </span>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 truncate" id="title-event-2">Race 407616</h3>
+                <div class="mt-2 flex justify-between items-baseline">
+                    <span class="text-2xl font-bold text-slate-900" id="count-event-2">0</span>
+                    <span class="text-xs text-slate-500">participants</span>
+                </div>
+                <div class="mt-2 text-xs text-slate-400 truncate font-mono" title="https://api.raceresult.com/407616/NABTZLY4KF4NLJQG2NR5D00ZPXZVL4XP">
+                    ID: 407616
+                </div>
+            </div>
+
+            <!-- Event 4 -->
+            <div id="card-event-3" class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 transition hover:shadow-md">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Event #4</span>
+                    <span id="status-badge-3" class="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Idle
+                    </span>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 truncate" id="title-event-3">Race 420706</h3>
+                <div class="mt-2 flex justify-between items-baseline">
+                    <span class="text-2xl font-bold text-slate-900" id="count-event-3">0</span>
+                    <span class="text-xs text-slate-500">participants</span>
+                </div>
+                <div class="mt-2 text-xs text-slate-400 truncate font-mono" title="https://api.raceresult.com/420706/TD6M27HKSZHRE5ZHVGRC75SU7KRKP3KD">
+                    ID: 420706
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Statistics Banner -->
+        <section class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl font-black text-amber-400 pointer-events-none">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
+                <div class="border-b md:border-b-0 md:border-r border-slate-700/80 pb-4 md:pb-0 pr-0 md:pr-6">
+                    <span class="text-xs uppercase font-semibold text-slate-400">Total Unique Athletes</span>
+                    <div class="text-3xl font-extrabold mt-1 text-white" id="stat-total-unique">0</div>
+                    <p class="text-xs text-slate-400 mt-1">Matched by IC/Passport No</p>
+                </div>
+
+                <div class="border-b md:border-b-0 md:border-r border-slate-700/80 pb-4 md:pb-0 pr-0 md:pr-6">
+                    <span class="text-xs uppercase font-semibold text-amber-400 flex items-center gap-1">
+                        <i class="fa-solid fa-crown text-amber-400"></i> GrandSlam Grandmasters
+                    </span>
+                    <div class="text-3xl font-extrabold mt-1 text-amber-400" id="stat-grandmasters">0</div>
+                    <p class="text-xs text-amber-200/70 mt-1">Completed ALL 4 events</p>
+                </div>
+
+                <div class="border-b md:border-b-0 md:border-r border-slate-700/80 pb-4 md:pb-0 pr-0 md:pr-6">
+                    <span class="text-xs uppercase font-semibold text-slate-400">3-Event Completion</span>
+                    <div class="text-3xl font-extrabold mt-1 text-sky-400" id="stat-three-events">0</div>
+                    <p class="text-xs text-slate-400 mt-1">Completed 3 out of 4 events</p>
+                </div>
+
+                <div>
+                    <span class="text-xs uppercase font-semibold text-slate-400">Average Completion Rate</span>
+                    <div class="text-3xl font-extrabold mt-1 text-emerald-400" id="stat-completion-rate">0%</div>
+                    <p class="text-xs text-slate-400 mt-1">Grandmaster Conversion Rate</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters & Controls Bar -->
+        <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+            
+            <!-- Search input -->
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Search by Name, IC No, or Passport..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+            </div>
+
+            <!-- Filter Dropdowns -->
+            <div class="flex flex-wrap items-center gap-3">
+                
+                <!-- Category Filter -->
+                <div class="flex items-center space-x-2">
+                    <label for="filterStatus" class="text-xs font-semibold text-slate-500 uppercase">Status:</label>
+                    <select id="filterStatus" onchange="applyFilters()" class="bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="ALL">All Participants</option>
+                        <option value="GRANDMASTER">👑 GrandSlam Grandmasters Only (4/4)</option>
+                        <option value="THREE_PLUS">3+ Events Completed</option>
+                        <option value="INCOMPLETE">Incomplete (< 4 Events)</option>
+                    </select>
+                </div>
+
+                <!-- Gender Filter -->
+                <div class="flex items-center space-x-2">
+                    <label for="filterGender" class="text-xs font-semibold text-slate-500 uppercase">Gender:</label>
+                    <select id="filterGender" onchange="applyFilters()" class="bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="ALL">All Genders</option>
+                        <option value="M">Male (M)</option>
+                        <option value="F">Female (F)</option>
+                    </select>
+                </div>
+
+                <!-- Toggle options -->
+                <button id="toggleGMOnly" onclick="toggleGrandmasterQuickFilter()" class="px-3 py-2 rounded-lg text-xs font-semibold border border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-crown text-amber-500"></i>
+                    <span>Grandmasters Only</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Main Data Table Container -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                    <h2 class="font-bold text-slate-800 text-base">Merged Participants Directory</h2>
+                    <span id="filteredCountBadge" class="bg-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">0 records</span>
+                </div>
+                <div class="text-xs text-slate-500">
+                    Showing matched results grouped by IC/Passport No
+                </div>
+            </div>
+
+            <!-- Table Scroll Container -->
+            <div class="overflow-x-auto min-h-[400px]">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-100 text-slate-700 uppercase font-bold sticky top-0 z-20 border-b border-slate-200 shadow-sm">
+                        <tr>
+                            <th class="py-3 px-3 w-12 text-center">#</th>
+                            <th class="py-3 px-3 min-w-[140px]">IC / Passport No</th>
+                            <th class="py-3 px-4 min-w-[180px]">Participant Name</th>
+                            <th class="py-3 px-2 w-16 text-center">Gender</th>
+                            <th class="py-3 px-3 text-center min-w-[100px]">Status</th>
+
+                            <!-- Event 1 Columns -->
+                            <th class="py-3 px-3 border-l border-slate-300 bg-amber-50/50 min-w-[190px]">
+                                <div class="font-extrabold text-amber-900">Event #1 (378696)</div>
+                                <div class="text-[10px] font-normal text-slate-500">Contest | Gender | Result</div>
+                            </th>
+
+                            <!-- Event 2 Columns -->
+                            <th class="py-3 px-3 border-l border-slate-200 bg-sky-50/50 min-w-[190px]">
+                                <div class="font-extrabold text-sky-900">Event #2 (408916)</div>
+                                <div class="text-[10px] font-normal text-slate-500">Contest | Gender | Result</div>
+                            </th>
+
+                            <!-- Event 3 Columns -->
+                            <th class="py-3 px-3 border-l border-slate-200 bg-emerald-50/50 min-w-[190px]">
+                                <div class="font-extrabold text-emerald-900">Event #3 (407616)</div>
+                                <div class="text-[10px] font-normal text-slate-500">Contest | Gender | Result</div>
+                            </th>
+
+                            <!-- Event 4 Columns -->
+                            <th class="py-3 px-3 border-l border-slate-200 bg-purple-50/50 min-w-[190px]">
+                                <div class="font-extrabold text-purple-900">Event #4 (420706)</div>
+                                <div class="text-[10px] font-normal text-slate-500">Contest | Gender | Result</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-200">
+                        <!-- Dynamic Rows injected via JS -->
+                        <tr>
+                            <td colspan="9" class="py-12 text-center text-slate-400">
+                                <div class="flex flex-col items-center justify-center space-y-3">
+                                    <i class="fa-solid fa-cloud-arrow-down text-4xl text-slate-300"></i>
+                                    <p class="text-sm">Click "Fetch API Data" above or paste JSON manually to aggregate participant records.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Footer Pagination/Summary -->
+            <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
+                <span id="showingText">Showing 0 of 0 entries</span>
+                <span class="text-slate-400">RaceResult Aggregator Engine</span>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal for Manual JSON Paste / Debug Fallback -->
+    <div id="pasteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="p-4 bg-slate-900 text-white flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-code text-amber-400"></i>
+                    <h3 class="font-bold text-base">Manual API Payload Fallback</h3>
+                </div>
+                <button onclick="closeManualPasteModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                <p class="text-xs text-slate-600">
+                    If browser CORS rules block direct client-side fetching from RaceResult API endpoints, select an event below and paste its raw JSON response.
+                </p>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Select Event Endpoint:</label>
+                    <select id="modalEventSelect" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500">
+                        <option value="0">Event 1: 378696 (YF3SEKI5X6LFAYERUCR573P04EG7M6F6)</option>
+                        <option value="1">Event 2: 408916 (JX71HI9I3Q47WTSV7D7QGIKE1BAPXGC3)</option>
+                        <option value="2">Event 3: 407616 (NABTZLY4KF4NLJQG2NR5D00ZPXZVL4XP)</option>
+                        <option value="3">Event 4: 420706 (TD6M27HKSZHRE5ZHVGRC75SU7KRKP3KD)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Paste Raw JSON Response:</label>
+                    <textarea id="modalJsonInput" rows="10" placeholder='Paste raw JSON here, e.g. {"data": [...]} or [...]' class="w-full p-3 font-mono text-xs bg-slate-900 text-emerald-400 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-3">
+                <button onclick="closeManualPasteModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold rounded-lg transition">
+                    Cancel
+                </button>
+                <button onclick="processManualJson()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-sm font-semibold rounded-lg transition">
+                    Import Payload
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Target RaceResult API Endpoints in sequence
+        const API_ENDPOINTS = [
+            { id: "378696", url: "https://api.raceresult.com/378696/YF3SEKI5X6LFAYERUCR573P04EG7M6F6", name: "Event 1 (378696)" },
+            { id: "408916", url: "https://api.raceresult.com/408916/JX71HI9I3Q47WTSV7D7QGIKE1BAPXGC3", name: "Event 2 (408916)" },
+            { id: "407616", url: "https://api.raceresult.com/407616/NABTZLY4KF4NLJQG2NR5D00ZPXZVL4XP", name: "Event 3 (407616)" },
+            { id: "420706", url: "https://api.raceresult.com/420706/TD6M27HKSZHRE5ZHVGRC75SU7KRKP3KD", name: "Event 4 (420706)" }
         ];
-        csvContent += row.join(",") + "\n";
-      });
 
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `Grandslam_Qualifiers_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+        // Store raw data per event index (0..3)
+        let eventRawData = [null, null, null, null];
+        
+        // Master aggregated dictionary key = cleaned IC/Passport
+        let aggregatedData = {};
+        
+        // Filtered view array for display
+        let currentFilteredList = [];
 
-    window.onload = function() {
-      startDataFetch();
-    };
-  </script>
+        // CORS Proxies for fallback
+        const CORS_PROXIES = [
+            (url) => url, // Direct
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`
+        ];
+
+        // On document ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Option to auto-fetch on load
+            fetchAllData();
+        });
+
+        // Main Fetch Controller
+        async function fetchAllData() {
+            const refreshIcon = document.getElementById('refreshIcon');
+            refreshIcon.classList.add('fa-spin');
+
+            for (let index = 0; index < API_ENDPOINTS.length; index++) {
+                updateCardStatus(index, 'loading', 'Fetching...');
+                try {
+                    const data = await fetchWithProxyFallback(API_ENDPOINTS[index].url);
+                    if (data) {
+                        eventRawData[index] = data;
+                        const parsedList = extractRecordsFromResponse(data);
+                        updateCardStatus(index, 'success', `Loaded (${parsedList.length})`);
+                        document.getElementById(`count-event-${index}`).innerText = parsedList.length;
+                    } else {
+                        throw new Error("Empty response payload");
+                    }
+                } catch (err) {
+                    console.warn(`Failed fetching event index ${index}:`, err);
+                    updateCardStatus(index, 'error', 'CORS / Blocked');
+                }
+            }
+
+            refreshIcon.classList.remove('fa-spin');
+            mergeAllEventData();
+        }
+
+        // Try direct fetch, then proxy fallbacks
+        async function fetchWithProxyFallback(targetUrl) {
+            for (let proxyFn of CORS_PROXIES) {
+                try {
+                    const requestUrl = proxyFn(targetUrl);
+                    const response = await fetch(requestUrl, { method: 'GET' });
+                    if (response.ok) {
+                        const json = await response.json();
+                        return json;
+                    }
+                } catch (e) {
+                    // Try next fallback proxy
+                }
+            }
+            return null;
+        }
+
+        function updateCardStatus(index, state, text) {
+            const badge = document.getElementById(`status-badge-${index}`);
+            if (!badge) return;
+
+            if (state === 'loading') {
+                badge.className = "px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 flex items-center gap-1";
+                badge.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> ${text}`;
+            } else if (state === 'success') {
+                badge.className = "px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1";
+                badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i> ${text}`;
+            } else if (state === 'error') {
+                badge.className = "px-2 py-0.5 text-xs font-medium rounded-full bg-rose-100 text-rose-700 flex items-center gap-1";
+                badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-500"></i> ${text}`;
+            } else {
+                badge.className = "px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> ${text}`;
+            }
+        }
+
+        /**
+         * Helper to parse RaceResult JSON formats:
+         * RaceResult payloads often come as:
+         * 1. Array of objects directly: [{ "ICNoPassportNo": "...", ... }]
+         * 2. Object with data array: { "data": [ ... ] } or { "data": { "0": [...] } }
+         * 3. Object with fields definition + nested array rows.
+         */
+        function extractRecordsFromResponse(payload) {
+            if (!payload) return [];
+            
+            // If direct array
+            if (Array.isArray(payload)) {
+                return normalizeRowObjects(payload);
+            }
+
+            // If nested inside payload.data
+            if (payload.data) {
+                if (Array.isArray(payload.data)) {
+                    return normalizeRowObjects(payload.data);
+                }
+                // Object with numeric keys
+                if (typeof payload.data === 'object') {
+                    const keys = Object.keys(payload.data);
+                    if (keys.length > 0 && Array.isArray(payload.data[keys[0]])) {
+                        return normalizeRowObjects(payload.data[keys[0]]);
+                    }
+                    if (payload.data.data && Array.isArray(payload.data.data)) {
+                        return normalizeRowObjects(payload.data.data);
+                    }
+                }
+            }
+
+            // Handle RaceResult standard table structure with 'fields' and 'data' array of arrays
+            if (payload.fields && Array.isArray(payload.fields) && payload.data) {
+                const fields = payload.fields.map(f => typeof f === 'string' ? f : (f.name || f.label || ''));
+                const rows = Array.isArray(payload.data) ? payload.data : Object.values(payload.data);
+                
+                return rows.map(row => {
+                    if (Array.isArray(row)) {
+                        let obj = {};
+                        fields.forEach((field, i) => {
+                            obj[field] = row[i] !== undefined ? row[i] : '';
+                        });
+                        return obj;
+                    }
+                    return row;
+                });
+            }
+
+            return [];
+        }
+
+        // Flexibly find key values regardless of exact casing/naming in RaceResult payload
+        function findFieldValue(obj, possibleKeys) {
+            if (!obj || typeof obj !== 'object') return '';
+            const objKeys = Object.keys(obj);
+
+            for (let pKey of possibleKeys) {
+                // Exact match check
+                if (obj[pKey] !== undefined && obj[pKey] !== null && obj[pKey] !== '') {
+                    return String(obj[pKey]).trim();
+                }
+                // Insensitive match check
+                const matchKey = objKeys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === pKey.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                if (matchKey && obj[matchKey] !== undefined && obj[matchKey] !== null && obj[matchKey] !== '') {
+                    return String(obj[matchKey]).trim();
+                }
+            }
+            return '';
+        }
+
+        function normalizeRowObjects(arr) {
+            return arr.map(item => {
+                if (typeof item === 'object' && item !== null) return item;
+                return {};
+            });
+        }
+
+        // Clean IC/Passport key for matching
+        function cleanICKey(val) {
+            if (!val) return '';
+            return String(val).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        }
+
+        // Aggregation Logic
+        function mergeAllEventData() {
+            aggregatedData = {};
+
+            const icKeys = ['icnopassportno', 'icno', 'passport', 'passportno', 'icnopassport', 'ic', 'nric', 'idno', 'identitynumber'];
+            const nameKeys = ['fullname', 'name', 'athlete', 'participantname', 'participant', 'firstname'];
+            const genderKeys = ['gender', 'sex', 'g'];
+            const contestKeys = ['contest', 'category', 'event', 'distance', 'race'];
+            const resultKeys = ['result', 'time', 'finishtime', 'status', 'rank', 'chip time', 'chiptime', 'guntime', 'gun time'];
+
+            eventRawData.forEach((dataPayload, eventIndex) => {
+                if (!dataPayload) return;
+                const records = extractRecordsFromResponse(dataPayload);
+
+                records.forEach(row => {
+                    const rawIC = findFieldValue(row, icKeys);
+                    const cleanIC = cleanICKey(rawIC);
+
+                    if (!cleanIC) return; // Skip records without valid IC key
+
+                    const name = findFieldValue(row, nameKeys) || 'N/A';
+                    const gender = findFieldValue(row, genderKeys) || '';
+                    const contest = findFieldValue(row, contestKeys) || 'Standard';
+                    const resultTime = findFieldValue(row, resultKeys) || 'Finished';
+
+                    // Determine validity: non-empty time or finish indicator
+                    const isValidResult = resultTime !== '' && 
+                                         !resultTime.toLowerCase().includes('dns') && 
+                                         !resultTime.toLowerCase().includes('dnf') &&
+                                         !resultTime.toLowerCase().includes('dq');
+
+                    if (!aggregatedData[cleanIC]) {
+                        aggregatedData[cleanIC] = {
+                            icRaw: rawIC,
+                            cleanIC: cleanIC,
+                            name: name,
+                            gender: gender,
+                            events: [null, null, null, null],
+                            completedCount: 0
+                        };
+                    }
+
+                    // Update gender or name if missing
+                    if (aggregatedData[cleanIC].name === 'N/A' && name !== 'N/A') {
+                        aggregatedData[cleanIC].name = name;
+                    }
+                    if (!aggregatedData[cleanIC].gender && gender) {
+                        aggregatedData[cleanIC].gender = gender;
+                    }
+
+                    // Attach event result
+                    aggregatedData[cleanIC].events[eventIndex] = {
+                        contest: contest,
+                        gender: gender || aggregatedData[cleanIC].gender || '-',
+                        result: resultTime,
+                        isValid: isValidResult
+                    };
+                });
+            });
+
+            // Re-calculate completion count per athlete
+            Object.values(aggregatedData).forEach(participant => {
+                let count = 0;
+                participant.events.forEach(evt => {
+                    if (evt && evt.isValid) count++;
+                });
+                participant.completedCount = count;
+                participant.isGrandmaster = (count === 4);
+            });
+
+            updateStatistics();
+            applyFilters();
+        }
+
+        function updateStatistics() {
+            const allAthletes = Object.values(aggregatedData);
+            const totalUnique = allAthletes.length;
+            const grandmasters = allAthletes.filter(a => a.isGrandmaster).length;
+            const threeEvents = allAthletes.filter(a => a.completedCount === 3).length;
+            const rate = totalUnique > 0 ? ((grandmasters / totalUnique) * 100).toFixed(1) : 0;
+
+            document.getElementById('stat-total-unique').innerText = totalUnique.toLocaleString();
+            document.getElementById('stat-grandmasters').innerText = grandmasters.toLocaleString();
+            document.getElementById('stat-three-events').innerText = threeEvents.toLocaleString();
+            document.getElementById('stat-completion-rate').innerText = `${rate}%`;
+        }
+
+        // Apply Search and Dynamic Filters
+        function applyFilters() {
+            const searchValue = document.getElementById('searchInput').value.trim().toLowerCase();
+            const statusFilter = document.getElementById('filterStatus').value;
+            const genderFilter = document.getElementById('filterGender').value;
+
+            let list = Object.values(aggregatedData);
+
+            // Filter search
+            if (searchValue) {
+                list = list.filter(item => 
+                    item.name.toLowerCase().includes(searchValue) || 
+                    item.icRaw.toLowerCase().includes(searchValue) ||
+                    item.cleanIC.toLowerCase().includes(searchValue)
+                );
+            }
+
+            // Filter status
+            if (statusFilter === 'GRANDMASTER') {
+                list = list.filter(item => item.isGrandmaster);
+            } else if (statusFilter === 'THREE_PLUS') {
+                list = list.filter(item => item.completedCount >= 3);
+            } else if (statusFilter === 'INCOMPLETE') {
+                list = list.filter(item => !item.isGrandmaster);
+            }
+
+            // Filter gender
+            if (genderFilter !== 'ALL') {
+                list = list.filter(item => {
+                    const g = (item.gender || '').toUpperCase();
+                    if (genderFilter === 'M') return g.startsWith('M') || g.startsWith('L'); // Male / Lelaki
+                    if (genderFilter === 'F') return g.startsWith('F') || g.startsWith('P') || g.startsWith('W'); // Female / Perempuan
+                    return true;
+                });
+            }
+
+            // Sort: Grandmasters first, then by name
+            list.sort((a, b) => {
+                if (a.isGrandmaster !== b.isGrandmaster) return b.isGrandmaster ? 1 : -1;
+                if (b.completedCount !== a.completedCount) return b.completedCount - a.completedCount;
+                return a.name.localeCompare(b.name);
+            });
+
+            currentFilteredList = list;
+            renderTable(list);
+        }
+
+        function toggleGrandmasterQuickFilter() {
+            const select = document.getElementById('filterStatus');
+            const btn = document.getElementById('toggleGMOnly');
+
+            if (select.value === 'GRANDMASTER') {
+                select.value = 'ALL';
+                btn.classList.remove('bg-amber-500', 'text-slate-950');
+                btn.classList.add('bg-amber-50', 'text-amber-800');
+            } else {
+                select.value = 'GRANDMASTER';
+                btn.classList.add('bg-amber-500', 'text-slate-950');
+                btn.classList.remove('bg-amber-50', 'text-amber-800');
+            }
+            applyFilters();
+        }
+
+        function renderTable(list) {
+            const tbody = document.getElementById('tableBody');
+            const filteredBadge = document.getElementById('filteredCountBadge');
+            const showingText = document.getElementById('showingText');
+
+            filteredBadge.innerText = `${list.length} records`;
+            showingText.innerText = `Showing ${list.length} of ${Object.keys(aggregatedData).length} participants`;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-filter-circle-xmark text-3xl mb-2"></i>
+                            <p class="text-sm font-medium">No matching participants found.</p>
+                            <p class="text-xs text-slate-400">Try adjusting your search or filter options.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            list.forEach((item, index) => {
+                const gmBadge = item.isGrandmaster 
+                    ? `<span class="badge-grandmaster px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-crown text-amber-600"></i> Grandmaster</span>`
+                    : `<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-semibold">${item.completedCount}/4 Done</span>`;
+
+                const rowBg = item.isGrandmaster ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-slate-50';
+
+                html += `
+                    <tr class="${rowBg} transition border-b border-slate-100">
+                        <td class="py-3 px-3 text-center text-slate-400 font-medium">${index + 1}</td>
+                        <td class="py-3 px-3 font-mono font-semibold text-slate-800">${escapeHtml(item.icRaw || item.cleanIC)}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-900">${escapeHtml(item.name)}</td>
+                        <td class="py-3 px-2 text-center">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${formatGenderBadgeClass(item.gender)}">
+                                ${escapeHtml(item.gender || '-')}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-center">
+                            ${gmBadge}
+                        </td>
+
+                        <!-- Event 1 -->
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[0])}</td>
+                        <!-- Event 2 -->
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[1])}</td>
+                        <!-- Event 3 -->
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[2])}</td>
+                        <!-- Event 4 -->
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[3])}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function renderEventCell(eventData) {
+            if (!eventData) {
+                return `
+                    <div class="flex items-center gap-1 text-slate-400 text-[11px]">
+                        <i class="fa-solid fa-circle-minus text-slate-300"></i>
+                        <span class="italic">Did Not Participate</span>
+                    </div>
+                `;
+            }
+
+            const contestStr = eventData.contest || 'Participant';
+            const genderStr = eventData.gender || '-';
+            const resultStr = eventData.result || 'Finished';
+
+            return `
+                <div class="space-y-0.5">
+                    <div class="flex items-center justify-between gap-1">
+                        <span class="font-semibold text-slate-800 truncate max-w-[100px]" title="${escapeHtml(contestStr)}">${escapeHtml(contestStr)}</span>
+                        <span class="text-[10px] font-mono text-slate-500 bg-slate-100 px-1 rounded">${escapeHtml(genderStr)}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full ${eventData.isValid ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                        <span class="font-mono text-[11px] font-bold ${eventData.isValid ? 'text-emerald-700' : 'text-rose-600'}">
+                            ${escapeHtml(resultStr)}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatGenderBadgeClass(g) {
+            if (!g) return 'bg-slate-100 text-slate-500';
+            const gen = g.toUpperCase();
+            if (gen.startsWith('M') || gen.startsWith('L')) return 'bg-blue-100 text-blue-700';
+            if (gen.startsWith('F') || gen.startsWith('P') || gen.startsWith('W')) return 'bg-pink-100 text-pink-700';
+            return 'bg-slate-100 text-slate-600';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // CSV Export Functionality
+        function exportToCSV() {
+            if (!currentFilteredList || currentFilteredList.length === 0) {
+                alert("No participant data available to export.");
+                return;
+            }
+
+            let csvContent = [];
+            
+            // Header row
+            const headers = [
+                "IC / Passport No",
+                "Participant Name",
+                "Gender",
+                "Grandmaster Status",
+                "Completed Events Count",
+                "Event 1 Contest", "Event 1 Gender", "Event 1 Result",
+                "Event 2 Contest", "Event 2 Gender", "Event 2 Result",
+                "Event 3 Contest", "Event 3 Gender", "Event 3 Result",
+                "Event 4 Contest", "Event 4 Gender", "Event 4 Result"
+            ];
+            csvContent.push(headers.map(h => `"${h}"`).join(","));
+
+            // Rows
+            currentFilteredList.forEach(item => {
+                let row = [
+                    `"${item.icRaw || item.cleanIC}"`,
+                    `"${item.name.replace(/"/g, '""')}"`,
+                    `"${item.gender}"`,
+                    `"${item.isGrandmaster ? 'GrandSlam Grandmaster' : 'Participant'}"`,
+                    `"${item.completedCount}/4"`,
+
+                    `"${item.events[0] ? item.events[0].contest : ''}"`,
+                    `"${item.events[0] ? item.events[0].gender : ''}"`,
+                    `"${item.events[0] ? item.events[0].result : ''}"`,
+
+                    `"${item.events[1] ? item.events[1].contest : ''}"`,
+                    `"${item.events[1] ? item.events[1].gender : ''}"`,
+                    `"${item.events[1] ? item.events[1].result : ''}"`,
+
+                    `"${item.events[2] ? item.events[2].contest : ''}"`,
+                    `"${item.events[2] ? item.events[2].gender : ''}"`,
+                    `"${item.events[2] ? item.events[2].result : ''}"`,
+
+                    `"${item.events[3] ? item.events[3].contest : ''}"`,
+                    `"${item.events[3] ? item.events[3].gender : ''}"`,
+                    `"${item.events[3] ? item.events[3].result : ''}"`
+                ];
+                csvContent.push(row.join(","));
+            });
+
+            const blob = new Blob([csvContent.join("\n")], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `GrandSlam_Grandmaster_Results_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Manual Paste Modal Logic
+        function openManualPasteModal() {
+            document.getElementById('pasteModal').classList.remove('hidden');
+        }
+
+        function closeManualPasteModal() {
+            document.getElementById('pasteModal').classList.add('hidden');
+        }
+
+        function processManualJson() {
+            const eventIdx = parseInt(document.getElementById('modalEventSelect').value, 10);
+            const rawText = document.getElementById('modalJsonInput').value.trim();
+
+            if (!rawText) {
+                alert("Please paste valid JSON payload text first.");
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(rawText);
+                eventRawData[eventIdx] = parsed;
+                const records = extractRecordsFromResponse(parsed);
+                
+                updateCardStatus(eventIdx, 'success', `Manual (${records.length})`);
+                document.getElementById(`count-event-${eventIdx}`).innerText = records.length;
+                
+                closeManualPasteModal();
+                document.getElementById('modalJsonInput').value = '';
+                
+                mergeAllEventData();
+            } catch (err) {
+                alert("Invalid JSON format! Please check the text and try again.\n" + err.message);
+            }
+        }
+    </script>
 </body>
 </html>
