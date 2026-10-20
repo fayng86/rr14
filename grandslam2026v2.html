@@ -291,4 +291,449 @@
         // Target RaceResult API Endpoints in sequence
         const API_ENDPOINTS = [
             { id: "378696", url: "https://api.raceresult.com/378696/YF3SEKI5X6LFAYERUCR573P04EG7M6F6", name: "Event 1 (378696)" },
-            { id: "408916", url: "
+            { id: "408916", url: "https://api.raceresult.com/408916/JX71HI9I3Q47WTSV7D7QGIKE1BAPXGC3", name: "Event 2 (408916)" },
+            { id: "407616", url: "https://api.raceresult.com/407616/NABTZLY4KF4NLJQG2NR5D00ZPXZVL4XP", name: "Event 3 (407616)" },
+            { id: "420706", url: "https://api.raceresult.com/420706/TD6M27HKSZHRE5ZHVGRC75SU7KRKP3KD", name: "Event 4 (420706)" }
+        ];
+
+        let eventRawData = [null, null, null, null];
+        let aggregatedData = {};
+        let currentFilteredList = [];
+
+        const CORS_PROXIES = [
+            (url) => url,
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAllData();
+        });
+
+        async function fetchAllData() {
+            const refreshIcon = document.getElementById('refreshIcon');
+            refreshIcon.classList.add('fa-spin');
+
+            for (let index = 0; index < API_ENDPOINTS.length; index++) {
+                updateCardStatus(index, 'loading', 'Fetching...');
+                try {
+                    const data = await fetchWithProxyFallback(API_ENDPOINTS[index].url);
+                    if (data) {
+                        eventRawData[index] = data;
+                        const parsedList = extractRecordsFromResponse(data);
+                        updateCardStatus(index, 'success', `Loaded (${parsedList.length})`);
+                        document.getElementById(`count-event-${index}`).innerText = parsedList.length;
+                    } else {
+                        throw new Error("Empty response payload");
+                    }
+                } catch (err) {
+                    console.warn(`Failed fetching event index ${index}:`, err);
+                    updateCardStatus(index, 'error', 'CORS / Blocked');
+                }
+            }
+
+            refreshIcon.classList.remove('fa-spin');
+            mergeAllEventData();
+        }
+
+        async function fetchWithProxyFallback(targetUrl) {
+            for (let proxyFn of CORS_PROXIES) {
+                try {
+                    const requestUrl = proxyFn(targetUrl);
+                    const response = await fetch(requestUrl, { method: 'GET' });
+                    if (response.ok) {
+                        const json = await response.json();
+                        return json;
+                    }
+                } catch (e) {}
+            }
+            return null;
+        }
+
+        function updateCardStatus(index, state, text) {
+            const badge = document.getElementById(`status-badge-${index}`);
+            if (!badge) return;
+
+            if (state === 'loading') {
+                badge.className = "px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 flex items-center gap-1";
+                badge.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> ${text}`;
+            } else if (state === 'success') {
+                badge.className = "px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1";
+                badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i> ${text}`;
+            } else if (state === 'error') {
+                badge.className = "px-2 py-0.5 text-xs font-medium rounded-full bg-rose-100 text-rose-700 flex items-center gap-1";
+                badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-500"></i> ${text}`;
+            } else {
+                badge.className = "px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> ${text}`;
+            }
+        }
+
+        function extractRecordsFromResponse(payload) {
+            if (!payload) return [];
+            if (Array.isArray(payload)) return normalizeRowObjects(payload);
+
+            if (payload.data) {
+                if (Array.isArray(payload.data)) return normalizeRowObjects(payload.data);
+                if (typeof payload.data === 'object') {
+                    const keys = Object.keys(payload.data);
+                    if (keys.length > 0 && Array.isArray(payload.data[keys[0]])) {
+                        return normalizeRowObjects(payload.data[keys[0]]);
+                    }
+                    if (payload.data.data && Array.isArray(payload.data.data)) {
+                        return normalizeRowObjects(payload.data.data);
+                    }
+                }
+            }
+
+            if (payload.fields && Array.isArray(payload.fields) && payload.data) {
+                const fields = payload.fields.map(f => typeof f === 'string' ? f : (f.name || f.label || ''));
+                const rows = Array.isArray(payload.data) ? payload.data : Object.values(payload.data);
+                
+                return rows.map(row => {
+                    if (Array.isArray(row)) {
+                        let obj = {};
+                        fields.forEach((field, i) => {
+                            obj[field] = row[i] !== undefined ? row[i] : '';
+                        });
+                        return obj;
+                    }
+                    return row;
+                });
+            }
+
+            return [];
+        }
+
+        function findFieldValue(obj, possibleKeys) {
+            if (!obj || typeof obj !== 'object') return '';
+            const objKeys = Object.keys(obj);
+
+            for (let pKey of possibleKeys) {
+                if (obj[pKey] !== undefined && obj[pKey] !== null && obj[pKey] !== '') {
+                    return String(obj[pKey]).trim();
+                }
+                const matchKey = objKeys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === pKey.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                if (matchKey && obj[matchKey] !== undefined && obj[matchKey] !== null && obj[matchKey] !== '') {
+                    return String(obj[matchKey]).trim();
+                }
+            }
+            return '';
+        }
+
+        function normalizeRowObjects(arr) {
+            return arr.map(item => (typeof item === 'object' && item !== null) ? item : {});
+        }
+
+        function cleanICKey(val) {
+            if (!val) return '';
+            return String(val).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        }
+
+        // Mask IC/Passport for public view (e.g. ••••••••1234)
+        function maskICPassport(val) {
+            if (!val) return '••••••••';
+            const clean = String(val).trim();
+            if (clean.length <= 4) return '••••';
+            const last4 = clean.slice(-4);
+            const maskedPart = '•'.repeat(Math.max(4, clean.length - 4));
+            return maskedPart + last4;
+        }
+
+        function mergeAllEventData() {
+            aggregatedData = {};
+
+            const icKeys = ['icnopassportno', 'icno', 'passport', 'passportno', 'icnopassport', 'ic', 'nric', 'idno', 'identitynumber'];
+            const nameKeys = ['fullname', 'name', 'athlete', 'participantname', 'participant', 'firstname'];
+            const genderKeys = ['gender', 'sex', 'g'];
+            const contestKeys = ['contest', 'category', 'event', 'distance', 'race'];
+            const resultKeys = ['result', 'time', 'finishtime', 'status', 'rank', 'chip time', 'chiptime', 'guntime', 'gun time'];
+
+            eventRawData.forEach((dataPayload, eventIndex) => {
+                if (!dataPayload) return;
+                const records = extractRecordsFromResponse(dataPayload);
+
+                records.forEach(row => {
+                    const rawIC = findFieldValue(row, icKeys);
+                    const cleanIC = cleanICKey(rawIC);
+
+                    if (!cleanIC) return;
+
+                    const name = findFieldValue(row, nameKeys) || 'N/A';
+                    const gender = findFieldValue(row, genderKeys) || '';
+                    const contest = findFieldValue(row, contestKeys) || 'Standard';
+                    const resultTime = findFieldValue(row, resultKeys) || 'Finished';
+
+                    const isValidResult = resultTime !== '' && 
+                                         !resultTime.toLowerCase().includes('dns') && 
+                                         !resultTime.toLowerCase().includes('dnf') &&
+                                         !resultTime.toLowerCase().includes('dq');
+
+                    if (!aggregatedData[cleanIC]) {
+                        aggregatedData[cleanIC] = {
+                            icRaw: rawIC,
+                            cleanIC: cleanIC,
+                            maskedIC: maskICPassport(rawIC),
+                            name: name,
+                            gender: gender,
+                            events: [null, null, null, null],
+                            completedCount: 0
+                        };
+                    }
+
+                    if (aggregatedData[cleanIC].name === 'N/A' && name !== 'N/A') {
+                        aggregatedData[cleanIC].name = name;
+                    }
+                    if (!aggregatedData[cleanIC].gender && gender) {
+                        aggregatedData[cleanIC].gender = gender;
+                    }
+
+                    aggregatedData[cleanIC].events[eventIndex] = {
+                        contest: contest,
+                        gender: gender || aggregatedData[cleanIC].gender || '-',
+                        result: resultTime,
+                        isValid: isValidResult
+                    };
+                });
+            });
+
+            Object.values(aggregatedData).forEach(participant => {
+                let count = 0;
+                participant.events.forEach(evt => {
+                    if (evt && evt.isValid) count++;
+                });
+                participant.completedCount = count;
+                participant.isGrandmaster = (count === 4);
+            });
+
+            updateStatistics();
+            applyFilters();
+        }
+
+        function updateStatistics() {
+            const allAthletes = Object.values(aggregatedData);
+            const totalUnique = allAthletes.length;
+            const grandmasters = allAthletes.filter(a => a.isGrandmaster).length;
+            const threeEvents = allAthletes.filter(a => a.completedCount === 3).length;
+            const rate = totalUnique > 0 ? ((grandmasters / totalUnique) * 100).toFixed(1) : 0;
+
+            document.getElementById('stat-total-unique').innerText = totalUnique.toLocaleString();
+            document.getElementById('stat-grandmasters').innerText = grandmasters.toLocaleString();
+            document.getElementById('stat-three-events').innerText = threeEvents.toLocaleString();
+            document.getElementById('stat-completion-rate').innerText = `${rate}%`;
+        }
+
+        function applyFilters() {
+            const searchValue = document.getElementById('searchInput').value.trim().toLowerCase();
+            const statusFilter = document.getElementById('filterStatus').value;
+            const genderFilter = document.getElementById('filterGender').value;
+
+            let list = Object.values(aggregatedData);
+
+            if (searchValue) {
+                list = list.filter(item => item.name.toLowerCase().includes(searchValue));
+            }
+
+            if (statusFilter === 'GRANDMASTER') {
+                list = list.filter(item => item.isGrandmaster);
+            } else if (statusFilter === 'THREE_PLUS') {
+                list = list.filter(item => item.completedCount >= 3);
+            } else if (statusFilter === 'INCOMPLETE') {
+                list = list.filter(item => !item.isGrandmaster);
+            }
+
+            if (genderFilter !== 'ALL') {
+                list = list.filter(item => {
+                    const g = (item.gender || '').toUpperCase();
+                    if (genderFilter === 'M') return g.startsWith('M') || g.startsWith('L');
+                    if (genderFilter === 'F') return g.startsWith('F') || g.startsWith('P') || g.startsWith('W');
+                    return true;
+                });
+            }
+
+            list.sort((a, b) => {
+                if (a.isGrandmaster !== b.isGrandmaster) return b.isGrandmaster ? 1 : -1;
+                if (b.completedCount !== a.completedCount) return b.completedCount - a.completedCount;
+                return a.name.localeCompare(b.name);
+            });
+
+            currentFilteredList = list;
+            renderTable(list);
+        }
+
+        function toggleGrandmasterQuickFilter() {
+            const select = document.getElementById('filterStatus');
+            const btn = document.getElementById('toggleGMOnly');
+
+            if (select.value === 'GRANDMASTER') {
+                select.value = 'ALL';
+                btn.classList.remove('bg-amber-500', 'text-slate-950');
+                btn.classList.add('bg-amber-50', 'text-amber-800');
+            } else {
+                select.value = 'GRANDMASTER';
+                btn.classList.add('bg-amber-500', 'text-slate-950');
+                btn.classList.remove('bg-amber-50', 'text-amber-800');
+            }
+            applyFilters();
+        }
+
+        function renderTable(list) {
+            const tbody = document.getElementById('tableBody');
+            const filteredBadge = document.getElementById('filteredCountBadge');
+            const showingText = document.getElementById('showingText');
+
+            filteredBadge.innerText = `${list.length} records`;
+            showingText.innerText = `Showing ${list.length} of ${Object.keys(aggregatedData).length} participants`;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-filter-circle-xmark text-3xl mb-2"></i>
+                            <p class="text-sm font-medium">No matching participants found.</p>
+                            <p class="text-xs text-slate-400">Try adjusting your search or filter options.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            list.forEach((item, index) => {
+                const gmBadge = item.isGrandmaster 
+                    ? `<span class="badge-grandmaster px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-crown text-amber-600"></i> Grandmaster</span>`
+                    : `<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-semibold">${item.completedCount}/4 Done</span>`;
+
+                const rowBg = item.isGrandmaster ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-slate-50';
+
+                html += `
+                    <tr class="${rowBg} transition border-b border-slate-100">
+                        <td class="py-3 px-3 text-center text-slate-400 font-medium">${index + 1}</td>
+                        <td class="py-3 px-3 font-mono text-slate-500 tracking-wider" title="Masked for Privacy">${escapeHtml(item.maskedIC)}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-900">${escapeHtml(item.name)}</td>
+                        <td class="py-3 px-2 text-center">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${formatGenderBadgeClass(item.gender)}">
+                                ${escapeHtml(item.gender || '-')}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-center">${gmBadge}</td>
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[0])}</td>
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[1])}</td>
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[2])}</td>
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[3])}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function renderEventCell(eventData) {
+            if (!eventData) {
+                return `
+                    <div class="flex items-center gap-1 text-slate-400 text-[11px]">
+                        <i class="fa-solid fa-circle-minus text-slate-300"></i>
+                        <span class="italic">-</span>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="space-y-0.5">
+                    <div class="flex items-center justify-between gap-1">
+                        <span class="font-semibold text-slate-800 truncate max-w-[100px]" title="${escapeHtml(eventData.contest)}">${escapeHtml(eventData.contest)}</span>
+                        <span class="text-[10px] font-mono text-slate-500 bg-slate-100 px-1 rounded">${escapeHtml(eventData.gender)}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full ${eventData.isValid ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                        <span class="font-mono text-[11px] font-bold ${eventData.isValid ? 'text-emerald-700' : 'text-rose-600'}">
+                            ${escapeHtml(eventData.result)}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatGenderBadgeClass(g) {
+            if (!g) return 'bg-slate-100 text-slate-500';
+            const gen = g.toUpperCase();
+            if (gen.startsWith('M') || gen.startsWith('L')) return 'bg-blue-100 text-blue-700';
+            if (gen.startsWith('F') || gen.startsWith('P') || gen.startsWith('W')) return 'bg-pink-100 text-pink-700';
+            return 'bg-slate-100 text-slate-600';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function promptExportCSV() {
+            const password = prompt("Enter password to export CSV:");
+            if (password === null) return; // Cancelled
+            if (password !== "00001111") {
+                alert("Incorrect password! Export denied.");
+                return;
+            }
+            exportToCSV();
+        }
+
+        function exportToCSV() {
+            if (!currentFilteredList || currentFilteredList.length === 0) {
+                alert("No participant data available to export.");
+                return;
+            }
+
+            let csvContent = [];
+            const headers = [
+                "IC / Passport No (Masked)",
+                "Name",
+                "Gender",
+                "Grandmaster Status",
+                "Completed Events Count",
+                "Event 1 Contest", "Event 1 Gender", "Event 1 Result",
+                "Event 2 Contest", "Event 2 Gender", "Event 2 Result",
+                "Event 3 Contest", "Event 3 Gender", "Event 3 Result",
+                "Event 4 Contest", "Event 4 Gender", "Event 4 Result"
+            ];
+            csvContent.push(headers.map(h => `"${h}"`).join(","));
+
+            currentFilteredList.forEach(item => {
+                let row = [
+                    `"${item.maskedIC}"`,
+                    `"${item.name.replace(/"/g, '""')}"`,
+                    `"${item.gender}"`,
+                    `"${item.isGrandmaster ? 'GrandSlam Grandmaster' : 'Participant'}"`,
+                    `"${item.completedCount}/4"`,
+                    `"${item.events[0] ? item.events[0].contest : ''}"`,
+                    `"${item.events[0] ? item.events[0].gender : ''}"`,
+                    `"${item.events[0] ? item.events[0].result : ''}"`,
+                    `"${item.events[1] ? item.events[1].contest : ''}"`,
+                    `"${item.events[1] ? item.events[1].gender : ''}"`,
+                    `"${item.events[1] ? item.events[1].result : ''}"`,
+                    `"${item.events[2] ? item.events[2].contest : ''}"`,
+                    `"${item.events[2] ? item.events[2].gender : ''}"`,
+                    `"${item.events[2] ? item.events[2].result : ''}"`,
+                    `"${item.events[3] ? item.events[3].contest : ''}"`,
+                    `"${item.events[3] ? item.events[3].gender : ''}"`,
+                    `"${item.events[3] ? item.events[3].result : ''}"`
+                ];
+                csvContent.push(row.join(","));
+            });
+
+            const blob = new Blob([csvContent.join("\n")], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `GrandSlam_Grandmaster_Results_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
