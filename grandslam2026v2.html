@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrandSlam Grandmaster Tracker & Race Data Aggregator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .bg-gold-gradient {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+        }
+        .badge-grandmaster {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Header -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-slate-900 font-black text-xl shadow-md">
+                        <i class="fa-solid font-bold fa-trophy"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                            GrandSlam Grandmaster Tracker
+                            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">4-Event Series</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">RaceResult Multi-Event Aggregator & Finisher Verification</p>
+                    </div>
+                </div>
+
+                <!-- Action Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btnFetchAll" onclick="fetchAllData()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-sm rounded-lg shadow-md transition flex items-center gap-2">
+                        <i class="fa-solid fa-rotate" id="refreshIcon"></i>
+                        <span>Fetch API Data</span>
+                    </button>
+                    <button onclick="promptExportCSV()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-lg shadow transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-csv"></i>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- API Endpoint Status Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Event 1 -->
+            <div id="card-event-0" class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 transition hover:shadow-md">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Event #1</span>
+                    <span id="status-badge-0" class="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Idle
+                    </span>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 truncate" id="title-event-0">ROUTE 68 ULTRA 2026</h3>
+                <div class="mt-2 flex justify-between items-baseline">
+                    <span class="text-2xl font-bold text-slate-900" id="count-event-0">0</span>
+                    <span class="text-xs text-slate-500">participants</span>
+                </div>
+                <div class="mt-2 text-xs text-slate-400 truncate font-mono">ID: 378696</div>
+            </div>
+
+            <!-- Event 2 -->
+            <div id="card-event-1" class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 transition hover:shadow-md">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Event #2</span>
+                    <span id="status-badge-1" class="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Idle
+                    </span>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 truncate" id="title-event-1">LANGKAWI INTERNATIONAL ULTRA RUN 2026</h3>
+                <div class="mt-2 flex justify-between items-baseline">
+                    <span class="text-2xl font-bold text-slate-900" id="count-event-1">0</span>
+                    <span class="text-xs text-slate-500">participants</span>
+                </div>
+                <div class="mt-2 text-xs text-slate-400 truncate font-mono">ID: 408916</div>
+            </div>
+
+            <!-- Event 3 -->
+            <div id="card-event-2" class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 transition hover:shadow-md">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Event #3</span>
+                    <span id="status-badge-2" class="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Idle
+                    </span>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 truncate" id="title-event-2">SEMENYIH ULTRA 2026</h3>
+                <div class="mt-2 flex justify-between items-baseline">
+                    <span class="text-2xl font-bold text-slate-900" id="count-event-2">0</span>
+                    <span class="text-xs text-slate-500">participants</span>
+                </div>
+                <div class="mt-2 text-xs text-slate-400 truncate font-mono">ID: 407616</div>
+            </div>
+
+            <!-- Event 4 -->
+            <div id="card-event-3" class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 transition hover:shadow-md">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Event #4</span>
+                    <span id="status-badge-3" class="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Idle
+                    </span>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 truncate" id="title-event-3">SEKINCHAN ULTRA 2026</h3>
+                <div class="mt-2 flex justify-between items-baseline">
+                    <span class="text-2xl font-bold text-slate-900" id="count-event-3">0</span>
+                    <span class="text-xs text-slate-500">participants</span>
+                </div>
+                <div class="mt-2 text-xs text-slate-400 truncate font-mono">ID: 420706</div>
+            </div>
+        </section>
+
+        <!-- Summary Statistics Banner -->
+        <section class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl font-black text-amber-400 pointer-events-none">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
+                <div class="border-b md:border-b-0 md:border-r border-slate-700/80 pb-4 md:pb-0 pr-0 md:pr-6">
+                    <span class="text-xs uppercase font-semibold text-slate-400">Total Unique Athletes</span>
+                    <div class="text-3xl font-extrabold mt-1 text-white" id="stat-total-unique">0</div>
+                    <p class="text-xs text-slate-400 mt-1">Matched securely in background</p>
+                </div>
+
+                <div class="border-b md:border-b-0 md:border-r border-slate-700/80 pb-4 md:pb-0 pr-0 md:pr-6">
+                    <span class="text-xs uppercase font-semibold text-amber-400 flex items-center gap-1">
+                        <i class="fa-solid fa-crown text-amber-400"></i> GrandSlam Grandmasters
+                    </span>
+                    <div class="text-3xl font-extrabold mt-1 text-amber-400" id="stat-grandmasters">0</div>
+                    <p class="text-xs text-amber-200/70 mt-1">Completed ALL 4 events</p>
+                </div>
+
+                <div class="border-b md:border-b-0 md:border-r border-slate-700/80 pb-4 md:pb-0 pr-0 md:pr-6">
+                    <span class="text-xs uppercase font-semibold text-slate-400">3-Event Completion</span>
+                    <div class="text-3xl font-extrabold mt-1 text-sky-400" id="stat-three-events">0</div>
+                    <p class="text-xs text-slate-400 mt-1">Completed 3 out of 4 events</p>
+                </div>
+
+                <div>
+                    <span class="text-xs uppercase font-semibold text-slate-400">Average Completion Rate</span>
+                    <div class="text-3xl font-extrabold mt-1 text-emerald-400" id="stat-completion-rate">0%</div>
+                    <p class="text-xs text-slate-400 mt-1">Grandmaster Conversion Rate</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters & Controls Bar -->
+        <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+            
+            <!-- Search input -->
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Search by Participant Name..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+            </div>
+
+            <!-- Filter Dropdowns -->
+            <div class="flex flex-wrap items-center gap-3">
+                
+                <!-- Category Filter -->
+                <div class="flex items-center space-x-2">
+                    <label for="filterStatus" class="text-xs font-semibold text-slate-500 uppercase">Status:</label>
+                    <select id="filterStatus" onchange="applyFilters()" class="bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="ALL">All Participants</option>
+                        <option value="GRANDMASTER">👑 GrandSlam Grandmasters Only (4/4)</option>
+                        <option value="THREE_PLUS">3+ Events Completed</option>
+                        <option value="INCOMPLETE">Incomplete (< 4 Events)</option>
+                    </select>
+                </div>
+
+                <!-- Gender Filter -->
+                <div class="flex items-center space-x-2">
+                    <label for="filterGender" class="text-xs font-semibold text-slate-500 uppercase">Gender:</label>
+                    <select id="filterGender" onchange="applyFilters()" class="bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="ALL">All Genders</option>
+                        <option value="M">Male (M)</option>
+                        <option value="F">Female (F)</option>
+                    </select>
+                </div>
+
+                <!-- Toggle options -->
+                <button id="toggleGMOnly" onclick="toggleGrandmasterQuickFilter()" class="px-3 py-2 rounded-lg text-xs font-semibold border border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-crown text-amber-500"></i>
+                    <span>Grandmasters Only</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Main Data Table Container -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                    <h2 class="font-bold text-slate-800 text-base">Merged Participants Directory</h2>
+                    <span id="filteredCountBadge" class="bg-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">0 records</span>
+                </div>
+                <div class="text-xs text-slate-500 flex items-center gap-1.5">
+                    <i class="fa-solid fa-shield-halved text-emerald-600"></i> IC / Passport numbers are securely masked for public privacy
+                </div>
+            </div>
+
+            <!-- Table Scroll Container -->
+            <div class="overflow-x-auto min-h-[400px]">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-100 text-slate-700 uppercase font-bold sticky top-0 z-20 border-b border-slate-200 shadow-sm">
+                        <tr>
+                            <th class="py-3 px-3 w-12 text-center">#</th>
+                            <th class="py-3 px-3 min-w-[140px]">IC / Passport (Masked)</th>
+                            <th class="py-3 px-4 min-w-[180px]">Name</th>
+                            <th class="py-3 px-2 w-16 text-center">Gender</th>
+                            <th class="py-3 px-3 text-center min-w-[100px]">Status</th>
+
+                            <!-- Event 1 Columns -->
+                            <th class="py-3 px-3 border-l border-slate-300 bg-amber-50/50 min-w-[190px]">
+                                <div class="font-extrabold text-amber-900">Event #1 (378696)</div>
+                                <div class="text-[10px] font-normal text-slate-500">Contest | Gender | Result</div>
+                            </th>
+
+                            <!-- Event 2 Columns -->
+                            <th class="py-3 px-3 border-l border-slate-200 bg-sky-50/50 min-w-[190px]">
+                                <div class="font-extrabold text-sky-900">Event #2 (408916)</div>
+                                <div class="text-[10px] font-normal text-slate-500">Contest | Gender | Result</div>
+                            </th>
+
+                            <!-- Event 3 Columns -->
+                            <th class="py-3 px-3 border-l border-slate-200 bg-emerald-50/50 min-w-[190px]">
+                                <div class="font-extrabold text-emerald-900">Event #3 (407616)</div>
+                                <div class="text-[10px] font-normal text-slate-500">Contest | Gender | Result</div>
+                            </th>
+
+                            <!-- Event 4 Columns -->
+                            <th class="py-3 px-3 border-l border-slate-200 bg-purple-50/50 min-w-[190px]">
+                                <div class="font-extrabold text-purple-900">Event #4 (420706)</div>
+                                <div class="text-[10px] font-normal text-slate-500">Contest | Gender | Result</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-200">
+                        <tr>
+                            <td colspan="9" class="py-12 text-center text-slate-400">
+                                <div class="flex flex-col items-center justify-center space-y-3">
+                                    <i class="fa-solid fa-cloud-arrow-down text-4xl text-slate-300"></i>
+                                    <p class="text-sm">Click "Fetch API Data" above to aggregate participant records.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Footer Pagination/Summary -->
+            <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
+                <span id="showingText">Showing 0 of 0 entries</span>
+                <span class="text-slate-400">RaceResult Aggregator Engine</span>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Target RaceResult API Endpoints in sequence
+        const API_ENDPOINTS = [
+            { id: "378696", url: "https://api.raceresult.com/378696/YF3SEKI5X6LFAYERUCR573P04EG7M6F6", name: "Event 1 (378696)" },
+            { id: "408916", url: "
