@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaceResult Grandslam Qualifier Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Header / Navigation -->
+  <header class="bg-slate-900 text-white shadow-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 bg-amber-500 text-slate-950 rounded-xl font-bold shadow-lg shadow-amber-500/20">
+          <i class="fa-solid fa-trophy text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight">Grandslam Qualifier Dashboard</h1>
+          <p class="text-xs sm:text-sm text-slate-400">Cross-referencing RaceResult APIs across 4 consecutive rounds</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="btnFetchAll" onclick="startDataFetch()" class="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold px-5 py-2.5 rounded-xl transition duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm">
+          <i class="fa-solid fa-rotate" id="syncIcon"></i>
+          <span>Fetch All Race Data</span>
+        </button>
+        <button id="btnExportCSV" onclick="exportGrandslamCSV()" disabled class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium px-4 py-2.5 rounded-xl transition duration-200 text-sm border border-slate-700">
+          <i class="fa-solid fa-file-csv text-emerald-400"></i>
+          <span>Export CSV</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- Proxy / CORS Notice Banner -->
+    <div id="corsNotice" class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-900 flex items-start gap-3 relative">
+      <i class="fa-solid fa-triangle-exclamation text-amber-600 text-lg mt-0.5"></i>
+      <div class="text-xs sm:text-sm leading-relaxed pr-6">
+        <span class="font-semibold">CORS Proxy Integration Enabled:</span> If direct browser requests to RaceResult API fail due to CORS cross-origin headers, requests automatically route via a CORS proxy (`corsproxy.io`). Sample simulated fallback data is available if APIs are offline.
+      </div>
+      <button onclick="document.getElementById('corsNotice').remove()" class="absolute top-3 right-3 text-amber-700 hover:text-amber-900">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Progress & Loading State -->
+    <div id="fetchProgressContainer" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-4">
+      <div class="flex justify-between items-center text-sm font-semibold text-slate-700">
+        <span id="fetchProgressStatus" class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-notch fa-spin text-amber-500"></i> Initializing multi-API sync...
+        </span>
+        <span id="fetchProgressPercent" class="text-amber-600 font-bold">0%</span>
+      </div>
+      <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+        <div id="fetchProgressBar" class="bg-gradient-to-r from-amber-500 to-amber-600 h-full w-0 transition-all duration-300 rounded-full"></div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 text-xs">
+        <div id="round1StatusBadge" class="p-2 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-between">
+          <span>R1: Round 1</span> <i class="fa-regular fa-clock"></i>
+        </div>
+        <div id="round2StatusBadge" class="p-2 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-between">
+          <span>R2: Round 2</span> <i class="fa-regular fa-clock"></i>
+        </div>
+        <div id="round3StatusBadge" class="p-2 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-between">
+          <span>R3: Round 3</span> <i class="fa-regular fa-clock"></i>
+        </div>
+        <div id="round4StatusBadge" class="p-2 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-between">
+          <span>R4: Final Round</span> <i class="fa-regular fa-clock"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Metrics Cards -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="p-3.5 bg-blue-50 text-blue-600 rounded-xl text-xl">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Total Participants</p>
+          <p id="statTotal" class="text-2xl font-black text-slate-800">0</p>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl text-xl">
+          <i class="fa-solid fa-crown"></i>
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Grandslam Qualified</p>
+          <p id="statGrandslam" class="text-2xl font-black text-emerald-600">0</p>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="p-3.5 bg-amber-50 text-amber-600 rounded-xl text-xl">
+          <i class="fa-solid fa-person-running"></i>
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Partial (1-3 Rounds)</p>
+          <p id="statPartial" class="text-2xl font-black text-amber-600">0</p>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="p-3.5 bg-slate-100 text-slate-600 rounded-xl text-xl">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Single Round Only</p>
+          <p id="statSingle" class="text-2xl font-black text-slate-700">0</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Individual Lookup Tool Card -->
+    <section class="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-xl border border-slate-700 space-y-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-lg font-bold flex items-center gap-2 text-amber-400">
+            <i class="fa-solid fa-magnifying-glass"></i> Instant Individual Grandslam Lookup (IC-Based)
+          </h2>
+          <p class="text-xs text-slate-300">Enter your IC / Identity Card Number or Full Name to check qualification status across all 4 rounds.</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <div class="relative flex-grow">
+          <i class="fa-solid fa-id-card absolute left-3.5 top-3.5 text-slate-400"></i>
+          <input type="text" id="individualLookupInput" placeholder="Enter IC Number (e.g. 920815105432) or Full Name..." 
+                 class="w-full bg-slate-800/90 text-white placeholder-slate-400 pl-10 pr-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+        </div>
+        <button onclick="performIndividualLookup()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-md">
+          <i class="fa-solid fa-search"></i> Check Status
+        </button>
+      </div>
+
+      <div id="individualLookupResult" class="hidden bg-slate-800/80 rounded-xl p-4 border border-slate-700 text-sm space-y-3">
+        <!-- JS dynamically fills this -->
+      </div>
+    </section>
+
+    <!-- Main Results Filter & Table Section -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden flex flex-col">
+      <div class="p-5 border-b border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
+        <div class="relative w-full md:w-80">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+          <input type="text" id="tableSearchInput" oninput="applyFilters()" placeholder="Filter table by IC or Name..." 
+                 class="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Filter:</span>
+          <button onclick="setFilter('ALL')" id="filterBtnALL" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 shadow-sm">All Participants</button>
+          <button onclick="setFilter('QUALIFIED')" id="filterBtnQUALIFIED" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300">🎉 Grandslam Only</button>
+          <button onclick="setFilter('PARTIAL')" id="filterBtnPARTIAL" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300">⚠️ Missing 1+ Rounds</button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-semibold text-xs uppercase tracking-wider">
+              <th class="py-3.5 px-4">IC / ID Number</th>
+              <th class="py-3.5 px-4">Participant Name</th>
+              <th class="py-3.5 px-4">Bib</th>
+              <th class="py-3.5 px-4">Contest / Gender</th>
+              <th class="py-3.5 px-4 text-center">Grandslam Status</th>
+              <th class="py-3.5 px-4 text-center">R1 Results</th>
+              <th class="py-3.5 px-4 text-center">R2 Results</th>
+              <th class="py-3.5 px-4 text-center">R3 Results</th>
+              <th class="py-3.5 px-4 text-center">R4 Results</th>
+            </tr>
+          </thead>
+          <tbody id="resultsTableBody" class="divide-y divide-slate-100 text-slate-700">
+            <tr>
+              <td colspan="9" class="py-12 text-center text-slate-400">
+                <i class="fa-solid fa-cloud-arrow-down text-3xl mb-2 text-slate-300 block"></i>
+                No data loaded yet. Click <strong>"Fetch All Race Data"</strong> above to load and cross-reference results.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <span id="tableCountInfo">Showing 0 entries</span>
+        <span>Cross-checked primarily using IC across all 4 API endpoints</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-slate-900 text-slate-400 text-xs py-6 border-t border-slate-800 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center space-y-1">
+      <p>RaceResult Grandslam Qualifier Verification Tool</p>
+      <p class="text-slate-500">Cross-referencing endpoints: 378696 • 408916 • 407616 • 420706</p>
+    </div>
+  </footer>
+
+  <!-- Application Logic JS -->
+  <script>
+    const API_ENDPOINTS = [
+      { id: 1, name: "Round 1", code: "378696", url: "https://api.raceresult.com/378696/YF3SEKI5X6LFAYERUCR573P04EG7M6F6" },
+      { id: 2, name: "Round 2", code: "408916", url: "https://api.raceresult.com/408916/JX71HI9I3Q47WTSV7D7QGIKE1BAPXGC3" },
+      { id: 3, name: "Round 3", code: "407616", url: "https://api.raceresult.com/407616/NABTZLY4KF4NLJQG2NR5D00ZPXZVL4XP" },
+      { id: 4, name: "Round 4", code: "420706", url: "https://api.raceresult.com/420706/TD6M27HKSZHRE5ZHVGRC75SU7KRKP3KD" }
+    ];
+
+    let rawApiData = { 1: [], 2: [], 3: [], 4: [] };
+    let participantsMap = new Map(); 
+    let filteredList = [];
+    let currentFilter = 'ALL';
+
+    const SAMPLE_RUNNERS = [
+      { ic: "900101145231", name: "Ahmad Bin Zulkifli", bib: "A101", contest: "10KM Open", gender: "M", r: [true, true, true, true] },
+      { ic: "850312086432", name: "Tan Wei Ming", bib: "A102", contest: "21KM Veteran", gender: "M", r: [true, true, true, true] },
+      { ic: "941120105678", name: "Siti Nurhaliza Abdullah", bib: "B201", contest: "10KM Open", gender: "F", r: [true, true, true, false] },
+      { ic: "880504015993", name: "Muthusamy A/L Rajan", bib: "A103", contest: "21KM Open", gender: "M", r: [true, true, true, true] },
+      { ic: "920708123456", name: "Chong Kah Wai", bib: "C301", contest: "5KM Fun Run", gender: "M", r: [true, false, true, true] },
+      { ic: "961205036789", name: "Nur Amira Binti Hassan", bib: "B202", contest: "10KM Open", gender: "F", r: [true, true, false, false] },
+      { ic: "830419058765", name: "Lee Kok Keong", bib: "A104", contest: "21KM Veteran", gender: "M", r: [true, true, true, true] },
+      { ic: "910925146111", name: "Fariz Iskandar", bib: "A105", contest: "10KM Open", gender: "M", r: [false, true, true, true] },
+      { ic: "870214087788", name: "Subramaniam V", bib: "A106", contest: "21KM Open", gender: "M", r: [true, true, true, true] },
+      { ic: "950630109988", name: "Karen Wong Mei Ling", bib: "B203", contest: "10KM Open", gender: "F", r: [true, true, true, true] }
+    ];
+
+    function cleanStr(str) {
+      if (!str) return '';
+      return String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function parseRaceResultJSON(data) {
+      const records = [];
+      if (!data) return records;
+      let list = Array.isArray(data) ? data : (data.data || data.list || data.Data || []);
+      if (typeof data === 'object' && !Array.isArray(data) && data.Data && Array.isArray(data.Data)) {
+        list = data.Data;
+      }
+
+      list.forEach(item => {
+        let ic = '';
+        let firstname = '';
+        let lastname = '';
+        let fullname = '';
+        let bib = '';
+        let contest = '';
+        let gender = '';
+        let result = '';
+
+        if (Array.isArray(item)) {
+          ic = item[0] || item[1] || '';
+          firstname = item[2] || '';
+          lastname = item[3] || '';
+          fullname = `${firstname} ${lastname}`.trim() || item[1] || '';
+          bib = item[4] || '';
+          contest = item[5] || 'Standard';
+          gender = item[6] || '-';
+          result = item[7] || 'Finished';
+        } else if (typeof item === 'object') {
+          ic = item.IC || item.ic || item.ID || item.id || item.NationalID || item.Bib || item.BIB || '';
+          firstname = item.Firstname || item.FirstName || item.first_name || '';
+          lastname = item.Lastname || item.LastName || item.last_name || '';
+          fullname = item.Fullname || item.Name || `${firstname} ${lastname}`.trim();
+          bib = item.Bib || item.BIB || item.BibNo || '';
+          contest = item.Contest || item.Event || item.Category || 'Standard';
+          gender = item.Gender || item.Sex || '-';
+          result = item.Result || item.Time || item.Status || 'Finished';
+        }
+
+        if (ic || fullname) {
+          records.push({
+            ic: String(ic).trim(),
+            fullname: String(fullname).trim(),
+            bib: String(bib).trim(),
+            contest: String(contest).trim(),
+            gender: String(gender).trim(),
+            result: String(result).trim(),
+            raw: item
+          });
+        }
+      });
+      return records;
+    }
+
+    async function startDataFetch() {
+      const btn = document.getElementById('btnFetchAll');
+      const syncIcon = document.getElementById('syncIcon');
+      const progressContainer = document.getElementById('fetchProgressContainer');
+      const progressBar = document.getElementById('fetchProgressBar');
+      const progressStatus = document.getElementById('fetchProgressStatus');
+      const progressPercent = document.getElementById('fetchProgressPercent');
+
+      btn.disabled = true;
+      syncIcon.classList.add('fa-spin');
+      progressContainer.classList.remove('hidden');
+
+      rawApiData = { 1: [], 2: [], 3: [], 4: [] };
+      participantsMap.clear();
+
+      let usedFallback = false;
+
+      for (let i = 0; i < API_ENDPOINTS.length; i++) {
+        const ep = API_ENDPOINTS[i];
+        const stepNum = i + 1;
+        const percent = (stepNum / 4) * 100;
+
+        progressStatus.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-amber-500"></i> Fetching ${ep.name} (${ep.code})...`;
+        progressBar.style.width = `${percent}%`;
+        progressPercent.innerText = `${Math.round(percent)}%`;
+
+        const badge = document.getElementById(`round${stepNum}StatusBadge`);
+        badge.className = "p-2 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-between font-medium";
+        badge.innerHTML = `<span>R${stepNum}: ${ep.code}</span> <i class="fa-solid fa-spinner fa-spin"></i>`;
+
+        try {
+          let response;
+          try {
+            response = await fetch(ep.url);
+          } catch (corsErr) {
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(ep.url)}`;
+            response = await fetch(proxyUrl);
+          }
+
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const json = await response.json();
+          const parsedRecords = parseRaceResultJSON(json);
+
+          if (parsedRecords.length === 0) throw new Error('Empty result format');
+
+          rawApiData[stepNum] = parsedRecords;
+          badge.className = "p-2 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-between font-medium";
+          badge.innerHTML = `<span>R${stepNum}: ${parsedRecords.length} runners</span> <i class="fa-solid fa-check text-emerald-600"></i>`;
+        } catch (err) {
+          console.warn(`API ${ep.code} direct fetch failed or restricted by CORS:`, err);
+          usedFallback = true;
+          
+          const fallbackRecords = SAMPLE_RUNNERS.filter(r => r.r[i]).map(r => ({
+            ic: r.ic,
+            fullname: r.name,
+            bib: r.bib,
+            contest: r.contest,
+            gender: r.gender,
+            result: "00:45:20",
+            raw: {}
+          }));
+
+          rawApiData[stepNum] = fallbackRecords;
+          badge.className = "p-2 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-between font-medium border border-amber-200";
+          badge.innerHTML = `<span>R${stepNum}: Sample Data</span> <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>`;
+        }
+
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      progressStatus.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Cross-referencing results via IC across all 4 rounds...`;
+      crossReferenceData();
+
+      btn.disabled = false;
+      syncIcon.classList.remove('fa-spin');
+      document.getElementById('btnExportCSV').disabled = false;
+
+      if (usedFallback) {
+        document.getElementById('corsNotice').classList.remove('hidden');
+      }
+    }
+
+    function crossReferenceData() {
+      participantsMap.clear();
+
+      for (let roundNum = 1; roundNum <= 4; roundNum++) {
+        const records = rawApiData[roundNum] || [];
+
+        records.forEach(rec => {
+          // Primary Key is strictly IC for crosschecking
+          const cleanIcKey = cleanStr(rec.ic);
+          const cleanNameKey = cleanStr(rec.fullname);
+          const primaryKey = cleanIcKey.length > 2 ? cleanIcKey : cleanNameKey;
+
+          if (!primaryKey) return;
+
+          if (!participantsMap.has(primaryKey)) {
+            participantsMap.set(primaryKey, {
+              ic: rec.ic || 'N/A',
+              fullname: rec.fullname || 'Unknown Participant',
+              bib: rec.bib || '-',
+              contest: rec.contest || '-',
+              gender: rec.gender || '-',
+              rounds: { 
+                1: { done: false, result: '-' }, 
+                2: { done: false, result: '-' }, 
+                3: { done: false, result: '-' }, 
+                4: { done: false, result: '-' } 
+              },
+              roundsCount: 0
+            });
+          }
+
+          const participant = participantsMap.get(primaryKey);
+
+          if ((!participant.ic || participant.ic === 'N/A') && rec.ic) participant.ic = rec.ic;
+          if ((!participant.bib || participant.bib === '-') && rec.bib) participant.bib = rec.bib;
+          if ((!participant.contest || participant.contest === '-') && rec.contest) participant.contest = rec.contest;
+          if ((!participant.gender || participant.gender === '-') && rec.gender) participant.gender = rec.gender;
+
+          if (!participant.rounds[roundNum].done) {
+            participant.rounds[roundNum] = { done: true, result: rec.result || 'Finished' };
+            participant.roundsCount++;
+          }
+        });
+      }
+
+      updateMetrics();
+      applyFilters();
+    }
+
+    function updateMetrics() {
+      let total = participantsMap.size;
+      let grandslam = 0;
+      let partial = 0;
+      let single = 0;
+
+      participantsMap.forEach(p => {
+        if (p.roundsCount === 4) grandslam++;
+        else if (p.roundsCount > 1) partial++;
+        else single++;
+      });
+
+      document.getElementById('statTotal').innerText = total;
+      document.getElementById('statGrandslam').innerText = grandslam;
+      document.getElementById('statPartial').innerText = partial;
+      document.getElementById('statSingle').innerText = single;
+    }
+
+    function renderTable(dataList) {
+      const tbody = document.getElementById('resultsTableBody');
+      const countInfo = document.getElementById('tableCountInfo');
+
+      countInfo.innerText = `Showing ${dataList.length} of ${participantsMap.size} participants`;
+
+      if (dataList.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" class="py-8 text-center text-slate-400">
+              No matching records found.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = dataList.map(p => {
+        const isGrandslam = p.roundsCount === 4;
+        
+        const statusBadge = isGrandslam
+          ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <i class="fa-solid fa-trophy text-amber-500"></i> 🎉 Grandslam!
+             </span>`
+          : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+              <i class="fa-solid fa-hourglass-half text-amber-500"></i> ${p.roundsCount}/4 Rounds
+             </span>`;
+
+        const renderRoundCell = (roundObj) => {
+          if (roundObj.done) {
+            return `<div class="flex flex-col items-center">
+                      <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold mb-0.5">
+                        <i class="fa-solid fa-check"></i>
+                      </span>
+                      <span class="font-mono text-[11px] text-slate-600">${roundObj.result}</span>
+                    </div>`;
+          } else {
+            return `<div class="flex flex-col items-center">
+                      <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-400 text-xs font-semibold mb-0.5">
+                        <i class="fa-solid fa-xmark"></i>
+                      </span>
+                      <span class="text-[11px] text-slate-400">DNS/DNF</span>
+                    </div>`;
+          }
+        };
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition duration-150">
+            <td class="py-3.5 px-4 font-mono text-xs font-bold text-slate-800">
+              ${p.ic}
+            </td>
+            <td class="py-3.5 px-4 font-semibold text-slate-800">
+              ${p.fullname}
+            </td>
+            <td class="py-3.5 px-4 font-mono text-xs text-slate-600">
+              ${p.bib}
+            </td>
+            <td class="py-3.5 px-4 text-xs text-slate-600">
+              <div class="font-medium text-slate-800">${p.contest}</div>
+              <div class="text-slate-400 text-[11px]">Gender: ${p.gender}</div>
+            </td>
+            <td class="py-3.5 px-4 text-center">
+              ${statusBadge}
+            </td>
+            <td class="py-3.5 px-4 text-center">${renderRoundCell(p.rounds[1])}</td>
+            <td class="py-3.5 px-4 text-center">${renderRoundCell(p.rounds[2])}</td>
+            <td class="py-3.5 px-4 text-center">${renderRoundCell(p.rounds[3])}</td>
+            <td class="py-3.5 px-4 text-center">${renderRoundCell(p.rounds[4])}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function applyFilters() {
+      const searchVal = cleanStr(document.getElementById('tableSearchInput').value);
+      const list = Array.from(participantsMap.values());
+
+      filteredList = list.filter(p => {
+        if (currentFilter === 'QUALIFIED' && p.roundsCount !== 4) return false;
+        if (currentFilter === 'PARTIAL' && p.roundsCount === 4) return false;
+
+        if (searchVal) {
+          const nameClean = cleanStr(p.fullname);
+          const icClean = cleanStr(p.ic);
+          const bibClean = cleanStr(p.bib);
+          return nameClean.includes(searchVal) || icClean.includes(searchVal) || bibClean.includes(searchVal);
+        }
+
+        return true;
+      });
+
+      renderTable(filteredList);
+    }
+
+    function setFilter(filterType) {
+      currentFilter = filterType;
+      
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.className = "filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300";
+      });
+
+      const activeBtn = document.getElementById(`filterBtn${filterType}`);
+      if (activeBtn) {
+        activeBtn.className = "filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 shadow-sm";
+      }
+
+      applyFilters();
+    }
+
+    function performIndividualLookup() {
+      const query = cleanStr(document.getElementById('individualLookupInput').value);
+      const resultBox = document.getElementById('individualLookupResult');
+
+      if (!query) {
+        resultBox.classList.remove('hidden');
+        resultBox.innerHTML = `<p class="text-amber-400 font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i> Please enter an IC number or Full Name to search.</p>`;
+        return;
+      }
+
+      if (participantsMap.size === 0) {
+        resultBox.classList.remove('hidden');
+        resultBox.innerHTML = `<p class="text-amber-400 font-medium"><i class="fa-solid fa-circle-info mr-1"></i> Please click "Fetch All Race Data" above first to load event records.</p>`;
+        return;
+      }
+
+      let match = null;
+      for (let [key, p] of participantsMap.entries()) {
+        if (cleanStr(p.ic) === query || cleanStr(p.fullname) === query || key === query || cleanStr(p.ic).includes(query) || cleanStr(p.fullname).includes(query)) {
+          match = p;
+          break;
+        }
+      }
+
+      resultBox.classList.remove('hidden');
+
+      if (match) {
+        const isQual = match.roundsCount === 4;
+        resultBox.innerHTML = `
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-700 pb-3">
+            <div>
+              <h3 class="text-base font-bold text-white">${match.fullname}</h3>
+              <p class="text-xs text-slate-400 font-mono">IC: ${match.ic} | Bib: ${match.bib} | Contest: ${match.contest} | Gender: ${match.gender}</p>
+            </div>
+            <div>
+              ${isQual 
+                ? `<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                    <i class="fa-solid fa-crown text-amber-400"></i> GRANDSLAM QUALIFIED!
+                   </span>`
+                : `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                    <i class="fa-solid fa-triangle-exclamation"></i> ${match.roundsCount}/4 Rounds Completed
+                   </span>`
+              }
+            </div>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-xs">
+            ${[1,2,3,4].map(r => `
+              <div class="p-2.5 rounded-lg ${match.rounds[r].done ? 'bg-emerald-950/60 border border-emerald-600/40 text-emerald-300' : 'bg-slate-900 border border-slate-700 text-slate-500'} flex flex-col gap-1">
+                <div class="flex items-center justify-between font-semibold">
+                  <span>Round ${r}</span>
+                  <i class="fa-solid ${match.rounds[r].done ? 'fa-check-circle text-emerald-400' : 'fa-times-circle text-slate-600'}"></i>
+                </div>
+                <div class="font-mono text-[11px] ${match.rounds[r].done ? 'text-emerald-400' : 'text-slate-500'}">Result: ${match.rounds[r].result}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        resultBox.innerHTML = `
+          <p class="text-slate-300 font-medium"><i class="fa-solid fa-magnifying-glass-minus text-slate-400 mr-1.5"></i> No record found matching "<strong>${document.getElementById('individualLookupInput').value}</strong>".</p>
+        `;
+      }
+    }
+
+    function exportGrandslamCSV() {
+      const qualifiers = Array.from(participantsMap.values()).filter(p => p.roundsCount === 4);
+
+      if (qualifiers.length === 0) {
+        alert("No Grandslam qualifiers available to export.");
+        return;
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "IC Number,Full Name,Bib,Contest,Gender,Round 1 Result,Round 2 Result,Round 3 Result,Round 4 Result,Status\n";
+
+      qualifiers.forEach(p => {
+        const row = [
+          `"${p.ic}"`,
+          `"${p.fullname}"`,
+          `"${p.bib}"`,
+          `"${p.contest}"`,
+          `"${p.gender}"`,
+          `"${p.rounds[1].result}"`,
+          `"${p.rounds[2].result}"`,
+          `"${p.rounds[3].result}"`,
+          `"${p.rounds[4].result}"`,
+          "Verified Grandslam Qualifier"
+        ];
+        csvContent += row.join(",") + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Grandslam_Qualifiers_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    window.onload = function() {
+      startDataFetch();
+    };
+  </script>
+</body>
+</html>
