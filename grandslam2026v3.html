@@ -600,4 +600,140 @@
 
             let html = '';
             list.forEach((item, index) => {
-                const gmBadge = item.isGrandmaster
+                const gmBadge = item.isGrandmaster 
+                    ? `<span class="badge-grandmaster px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 shadow-sm"><i class="fa-solid fa-crown text-amber-600"></i> GrandSlam 100</span>`
+                    : `<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-semibold">${item.completedCount}/4 Done</span>`;
+
+                const rowBg = item.isGrandmaster ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-slate-50';
+
+                html += `
+                    <tr class="${rowBg} transition border-b border-slate-100">
+                        <td class="py-3 px-3 text-center text-slate-400 font-medium">${index + 1}</td>
+                        <td class="py-3 px-3 font-mono text-slate-500 tracking-wider" title="Masked for Privacy">${escapeHtml(item.maskedIC)}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-900">${escapeHtml(item.name)}</td>
+                        <td class="py-3 px-2 text-center">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${formatGenderBadgeClass(item.gender)}">
+                                ${escapeHtml(item.gender || '-')}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-center">${gmBadge}</td>
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[0])}</td>
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[1])}</td>
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[2])}</td>
+                        <td class="py-2 px-3 border-l border-slate-100">${renderEventCell(item.events[3])}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function renderEventCell(eventData) {
+            if (!eventData) {
+                return `
+                    <div class="flex items-center gap-1 text-slate-400 text-[11px]">
+                        <i class="fa-solid fa-circle-minus text-slate-300"></i>
+                        <span class="italic">-</span>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="space-y-0.5">
+                    <div class="flex items-center justify-between gap-1">
+                        <span class="font-semibold text-slate-800 truncate max-w-[100px]" title="${escapeHtml(eventData.contest)}">${escapeHtml(eventData.contest)}</span>
+                        <span class="text-[10px] font-mono text-slate-500 bg-slate-100 px-1 rounded">${escapeHtml(eventData.gender)}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full ${eventData.isValid ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                        <span class="font-mono text-[11px] font-bold ${eventData.isValid ? 'text-emerald-700' : 'text-rose-600'}">
+                            ${escapeHtml(eventData.result)}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatGenderBadgeClass(g) {
+            if (!g) return 'bg-slate-100 text-slate-500';
+            const gen = g.toUpperCase();
+            if (gen.startsWith('M') || gen.startsWith('L')) return 'bg-blue-100 text-blue-700';
+            if (gen.startsWith('F') || gen.startsWith('P') || gen.startsWith('W')) return 'bg-pink-100 text-pink-700';
+            return 'bg-slate-100 text-slate-600';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function promptExportCSV() {
+            const password = prompt("Enter password to export CSV:");
+            if (password === null) return; // Cancelled
+            if (password !== "00001111") {
+                alert("Incorrect password! Export denied.");
+                return;
+            }
+            exportToCSV();
+        }
+
+        function exportToCSV() {
+            if (!currentFilteredList || currentFilteredList.length === 0) {
+                alert("No participant data available to export.");
+                return;
+            }
+
+            let csvContent = [];
+            const headers = [
+                "IC / Passport No (Masked)",
+                "Name",
+                "Gender",
+                "GrandSlam Status",
+                "Completed Events Count",
+                "Event 1 Contest", "Event 1 Gender", "Event 1 Result",
+                "Event 2 Contest", "Event 2 Gender", "Event 2 Result",
+                "Event 3 Contest", "Event 3 Gender", "Event 3 Result",
+                "Event 4 Contest", "Event 4 Gender", "Event 4 Result"
+            ];
+            csvContent.push(headers.map(h => `"${h}"`).join(","));
+
+            currentFilteredList.forEach(item => {
+                let row = [
+                    `"${item.maskedIC}"`,
+                    `"${item.name.replace(/"/g, '""')}"`,
+                    `"${item.gender}"`,
+                    `"${item.isGrandmaster ? 'GrandSlam 100 Finisher' : 'Participant'}"`,
+                    `"${item.completedCount}/4"`,
+                    `"${item.events[0] ? item.events[0].contest : ''}"`,
+                    `"${item.events[0] ? item.events[0].gender : ''}"`,
+                    `"${item.events[0] ? item.events[0].result : ''}"`,
+                    `"${item.events[1] ? item.events[1].contest : ''}"`,
+                    `"${item.events[1] ? item.events[1].gender : ''}"`,
+                    `"${item.events[1] ? item.events[1].result : ''}"`,
+                    `"${item.events[2] ? item.events[2].contest : ''}"`,
+                    `"${item.events[2] ? item.events[2].gender : ''}"`,
+                    `"${item.events[2] ? item.events[2].result : ''}"`,
+                    `"${item.events[3] ? item.events[3].contest : ''}"`,
+                    `"${item.events[3] -> item.events[3].gender : ''}"`,
+                    `"${item.events[3] ? item.events[3].result : ''}"`
+                ];
+                csvContent.push(row.join(","));
+            });
+
+            const blob = new Blob([csvContent.join("\n")], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `GrandSlam100_Results_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
